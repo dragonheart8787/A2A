@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/conflict-ownership.json",
+  "title": "Conflict & Ownership (spec:conflict-ownership v1)",
+  "description": "責任邊界：誰是 owner、衝突時誰裁決、並行改動、merge policy",
+  "type": "object",
+  "required": ["spec", "ownership", "merge_policy"],
+  "properties": {
+    "spec": { "const": "conflict-ownership" },
+    "version": { "type": "string" },
+    "ownership": {
+      "type": "array",
+      "description": "誰對某模組/資料/接口有最終決定權",
+      "items": {
+        "type": "object",
+        "required": ["scope", "owner"],
+        "properties": {
+          "scope": { "type": "string" },
+          "owner": { "type": "string" },
+          "agent_id_or_human": { "type": "string" }
+        }
+      }
+    },
+    "arbiter": {
+      "type": "object",
+      "description": "衝突時誰裁決",
+      "properties": {
+        "default": { "type": "string" },
+        "by_scope": { "type": "object" }
+      }
+    },
+    "parallel_edits": {
+      "type": "object",
+      "description": "同一個檔案是否允許多代理並行改",
+      "properties": {
+        "same_file_allowed": { "type": "boolean", "default": false },
+        "same_module_allowed": { "type": "boolean" }
+      }
+    },
+    "merge_policy": {
+      "type": "object",
+      "required": ["strategy", "required_checks"],
+      "properties": {
+        "strategy": { "type": "string", "enum": ["rebase", "merge", "squash"] },
+        "required_checks": { "type": "array", "items": { "type": "string" } },
+        "approval_required": { "type": "boolean" }
+      }
+    }
+  },
+  "additionalProperties": true
+}

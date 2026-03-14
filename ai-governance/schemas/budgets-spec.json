@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/budgets-spec.json",
+  "title": "Budgets (spec:budgets v1)",
+  "type": "object",
+  "required": ["per_change_limits"],
+  "properties": {
+    "per_change_limits": {
+      "type": "object",
+      "properties": {
+        "new_files_max": { "type": "integer" },
+        "new_dependencies_max": { "type": "integer" },
+        "new_public_functions_max": { "type": "integer" },
+        "cyclomatic_complexity_delta_max": { "type": "integer" },
+        "new_lines_max": { "type": "integer" }
+      }
+    },
+    "global_budgets": { "type": "object" },
+    "violation_action": { "type": "string" }
+  },
+  "additionalProperties": true
+}

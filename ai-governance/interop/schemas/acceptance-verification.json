@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/acceptance-verification.json",
+  "title": "Objective Verification DSL - 驗收語言，可機械驗收",
+  "description": "tests 必須通過哪些命令、指標門檻、回歸集；交付可機械驗收，agent 不用吵。",
+  "type": "object",
+  "required": ["spec", "test_commands"],
+  "properties": {
+    "spec": { "const": "acceptance-verification" },
+    "version": { "type": "string" },
+    "test_commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "expected_exit"],
+        "properties": {
+          "command": { "type": "string" },
+          "expected_exit": { "type": "integer" },
+          "timeout_seconds": { "type": "integer" }
+        }
+      }
+    },
+    "metric_thresholds": {
+      "type": "object",
+      "properties": {
+        "latency_p99_ms": { "type": "number" },
+        "memory_mb": { "type": "number" },
+        "accuracy_min": { "type": "number" },
+        "diff_size_max_lines": { "type": "integer" },
+        "coverage_min_percent": { "type": "number" }
+      }
+    },
+    "regression_scenarios": {
+      "type": "array",
+      "description": "必跑哪些 scenario / test suite",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

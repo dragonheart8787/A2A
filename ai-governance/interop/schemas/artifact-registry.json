@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/artifact-registry.json",
+  "title": "Shared Artifacts Registry (spec:artifact-registry v1)",
+  "description": "工件登記與引用：同一份真相，content-addressed 更好",
+  "type": "object",
+  "required": ["spec", "artifacts"],
+  "properties": {
+    "spec": { "const": "artifact-registry" },
+    "version": { "type": "string", "default": "v1" },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "schema_type", "location", "immutability"],
+        "properties": {
+          "artifact_id": { "type": "string", "minLength": 1 },
+          "content_hash": { "type": ["string", "null"], "description": "content-addressed（例如 sha256），可選" },
+          "version": { "type": "string" },
+          "lineage": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "從哪個 artifact 派生"
+          },
+          "location": {
+            "type": "string",
+            "description": "repo path / URL / storage"
+          },
+          "schema_type": {
+            "type": "string",
+            "enum": ["spec", "api", "dataset", "benchmark", "patch", "report", "config"],
+            "description": "artifact 類型"
+          },
+          "immutability": {
+            "type": "string",
+            "enum": ["immutable", "append_only", "mutable"],
+            "description": "immutable / append-only / mutable"
+          },
+          "trust": { "type": "string", "enum": ["trusted", "untrusted", "verified"] }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

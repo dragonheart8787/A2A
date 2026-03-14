@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/adr-spec.json",
+  "title": "ADR (spec:adr v1)",
+  "type": "object",
+  "required": ["id", "title", "status", "date", "context", "options", "decision", "consequences"],
+  "properties": {
+    "id": { "type": "string" },
+    "title": { "type": "string" },
+    "status": { "type": "string", "enum": ["proposed", "accepted", "deprecated", "superseded"] },
+    "date": { "type": "string" },
+    "supersedes": { "type": ["string", "null"] },
+    "context": {
+      "type": "object",
+      "properties": {
+        "background": { "type": "string" },
+        "constraints": { "type": "string" }
+      }
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "pros": { "type": "array" },
+          "cons": { "type": "array" }
+        }
+      }
+    },
+    "decision": { "type": "string" },
+    "consequences": {
+      "type": "object",
+      "properties": {
+        "positive": { "type": "array" },
+        "negative": { "type": "array" },
+        "follow_ups": { "type": "array" }
+      }
+    },
+    "references": { "type": "array" }
+  },
+  "additionalProperties": true
+}

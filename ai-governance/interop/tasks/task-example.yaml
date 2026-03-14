@@ -1,0 +1,41 @@
+# spec:task-ticket v1
+# 範例：交付給另一 AI 的工單。沒有工單就沒有 scope，防止 creep。
+
+spec: task-ticket
+version: v1
+task_id: TASK-001
+owner_agent: orchestrator-agent
+consumer_agent: example-code-agent
+
+objective: "在 data_loader 模組新增 load_prices(symbols, start, end) 的單元測試，覆蓋率 ≥ 80%。"
+
+acceptance_criteria:
+  - "tests/data_loader/test_load_prices.py 存在且通過"
+  - "coverage 對 data_loader 模組 ≥ 80%"
+  - "未修改 public API 簽名"
+
+inputs:
+  - artifact_id: spec-api-canon
+    ref: "ai-governance/architecture.md#api-canon"
+    role: "API 正典"
+  - artifact_id: module-data-loader
+    ref: "ai-governance/modules.yaml#data_loader"
+    version: "v1"
+    role: "模組邊界"
+
+constraints:
+  forbidden_changes:
+    - "src/api/*"
+    - "modules.yaml"
+  risk_level: low
+
+deliverables:
+  - type: file
+    path_or_schema: "tests/data_loader/test_load_prices.py"
+    required: true
+  - type: report
+    path_or_schema: "coverage report"
+    required: true
+
+handoff_protocol: patch
+state: proposed

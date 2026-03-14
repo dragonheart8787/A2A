@@ -1,0 +1,25 @@
+# spec:no-rewrite-semantics v1
+# 反重寫語意寫進協議能力，不是人類規範。
+
+spec: no-rewrite-semantics
+version: v1
+
+change_mode:
+  patch_only: "僅允許 patch，禁止整檔重寫與大規模 refactor。"
+  refactor_limited: "允許有限重構，不可改 public API、不可新增依賴。"
+  rewrite_allowed: "允許整檔重寫，但必須附 evidence。"
+
+rewrite_allowed_requires:
+  - profiler_ref
+  - benchmark_ref
+  - failing_tests_ref
+  rule: "rewrite_allowed 需要 evidence（profiler、benchmark、failing tests）。"
+
+touching_stable_requires:
+  - diff_budget
+  - rollback
+  rule: "touching stable 模組必須附 diff_budget + rollback。"
+
+diff_budget_schema:
+  max_lines_per_file: "見 budgets.yaml stable_module_max_diff_lines"
+  max_new_public_api: 0

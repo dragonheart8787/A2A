@@ -1,0 +1,18 @@
+# Pre-commit：本地直接擋掉違反 AI Governance 的 commit
+# 安裝：pre-commit install
+# 手動跑：pre-commit run --all-files
+
+repos:
+  - repo: local
+    hooks:
+      - id: ai-governance-schema
+        name: ai-governance schema 驗證
+        entry: python ai-governance/scripts/validate_schemas.py
+        language: system
+        pass_filenames: false
+
+      - id: ai-governance-enforce
+        name: ai-governance 五條 MVP 校驗
+        entry: python ai-governance/scripts/enforce.py
+        language: system
+        pass_filenames: false

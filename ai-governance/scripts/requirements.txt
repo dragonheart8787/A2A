@@ -1,0 +1,3 @@
+# 僅供 validate_schemas.py / enforce.py 使用（CI 或 pre-commit 環境）
+pyyaml>=6.0
+jsonschema>=4.0

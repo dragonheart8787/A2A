@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/work-contract.json",
+  "title": "WorkContract (spec:work-contract v1) - 可簽署的協商，綁定後續動作",
+  "description": "先交換 capability + constraints，產生 WorkContract (hash)；後續所有動作都引用該 WorkContract。",
+  "type": "object",
+  "required": ["spec", "work_contract_id", "contract_hash", "parties", "capability_constraints_snapshot"],
+  "properties": {
+    "spec": { "const": "work-contract" },
+    "version": { "type": "string" },
+    "work_contract_id": { "type": "string", "minLength": 1 },
+    "contract_hash": { "type": "string", "description": "本 WorkContract 內容的 hash，用於綁定引用" },
+    "parties": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "agent_id 列表"
+    },
+    "capability_constraints_snapshot": {
+      "type": "object",
+      "description": "協商當下的 capability + constraints 快照",
+      "properties": {
+        "owner": { "type": "object" },
+        "consumer": { "type": "object" }
+      }
+    },
+    "scope_ref": { "type": "string", "description": "task_id 或 scope 描述" },
+    "created_at": { "type": "string" }
+  },
+  "additionalProperties": true
+}

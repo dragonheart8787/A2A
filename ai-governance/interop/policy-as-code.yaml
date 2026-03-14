@@ -1,0 +1,19 @@
+# spec:policy-as-code v1
+# 協議層可拒絕：把「拒絕權」標準化，企業治理能力。
+
+spec: policy-as-code
+version: v1
+
+message_requirements:
+  sender_must_include: policy_context
+  policy_context_schema: "#/schemas/policy-context.json"
+  policy_context_must_include: contract_hash
+
+receiver_requirements:
+  must_reply_with: policy_check_result
+  policy_check_result_schema: "#/schemas/policy-check-result.json"
+  policy_check_result_fields: [pass, violated_rules]
+
+execution_gate:
+  rule: "policy_check_result.pass === false 則不能進入 execute 狀態。"
+  enforced_at: protocol

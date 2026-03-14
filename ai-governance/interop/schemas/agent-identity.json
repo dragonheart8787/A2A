@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/agent-identity.json",
+  "title": "Agent Identity / Capability (spec:agent-identity v1)",
+  "description": "每個 AI 的自我描述，讓其他 AI 知道能做什麼、不能做什麼、工具權限、I/O、SLA",
+  "type": "object",
+  "required": ["spec", "agent_id", "capabilities", "constraints", "io_schema"],
+  "properties": {
+    "spec": { "const": "agent-identity" },
+    "version": { "type": "string", "default": "v1" },
+    "agent_id": { "type": "string", "minLength": 1 },
+    "display_name": { "type": "string" },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "能做什麼（例如：code_review, backend_impl, spec_writing）"
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "不能做什麼、邊界"
+    },
+    "tools": {
+      "type": "object",
+      "description": "工具權限宣告",
+      "properties": {
+        "filesystem": { "type": "string", "enum": ["none", "read", "read_write", "allowlist"] },
+        "allowlist_paths": { "type": "array", "items": { "type": "string" } },
+        "network": { "type": "string", "enum": ["none", "outbound", "outbound_allowlist"] },
+        "network_allowlist": { "type": "array", "items": { "type": "string" } },
+        "sandbox": { "type": "string", "enum": ["full", "restricted", "read_only"] },
+        "tool_names": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "io_schema": {
+      "type": "object",
+      "description": "輸入輸出格式（可引用 JSON Schema 或簡述）",
+      "properties": {
+        "input": { "type": "object" },
+        "output": { "type": "object" }
+      }
+    },
+    "sla": {
+      "type": "object",
+      "properties": {
+        "response_deadline_seconds": { "type": "integer" },
+        "max_context_tokens": { "type": "integer" },
+        "cost_ceiling_per_task": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": true
+}

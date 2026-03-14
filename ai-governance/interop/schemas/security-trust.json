@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/security-trust.json",
+  "title": "Security / Trust (spec:security-trust v1)",
+  "description": "權限最小化、artifact 信任、工具沙箱、可重現 evidence。多代理安全性是乘法。",
+  "type": "object",
+  "required": ["spec", "capability_auth", "artifact_trust", "tool_sandbox", "evidence_reproducibility"],
+  "properties": {
+    "spec": { "const": "security-trust" },
+    "version": { "type": "string" },
+    "capability_auth": {
+      "type": "object",
+      "description": "權限最小化（capability-based）",
+      "properties": {
+        "default_deny": { "type": "boolean" },
+        "per_agent_capabilities": { "type": "object" }
+      }
+    },
+    "artifact_trust": {
+      "type": "object",
+      "description": "artifact 來源信任標記",
+      "properties": {
+        "trust_levels": { "type": "array", "items": { "type": "string" } },
+        "untrusted_handling": { "type": "string" }
+      }
+    },
+    "tool_sandbox": {
+      "type": "object",
+      "properties": {
+        "filesystem_allowlist": { "type": "array", "items": { "type": "string" } },
+        "network_allowlist": { "type": "array", "items": { "type": "string" } },
+        "no_exec_unsanitized": { "type": "boolean" }
+      }
+    },
+    "evidence_reproducibility": {
+      "type": "object",
+      "description": "evidence 必須可重現",
+      "properties": {
+        "test_command_required": { "type": "boolean" },
+        "hash_or_version_required": { "type": "boolean" }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "description": "已知風險：prompt injection via artifacts、tool-chain 組合漏洞",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

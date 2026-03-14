@@ -1,0 +1,16 @@
+# spec:budgets v1
+# 複雜度預算 — 單次變更不得超過下列上限（可依專案調整）
+
+per_change_limits:
+  new_files_max: 3
+  new_dependencies_max: 1
+  new_public_functions_max: 5
+  cyclomatic_complexity_delta_max: 2   # 單一函數僅允許 +N
+  new_lines_max: 300   # 可選：單次 patch 新增行數上限
+  stable_module_max_diff_lines: 50     # 觸及 stability:stable 模組時，單檔 diff 行數上限（CI 強制）
+
+global_budgets:
+  total_dependencies_cap: 50   # 專案依賴總數上限（提醒用）
+  api_surface_growth_per_release: 10   # 每版 public API 數量成長上限
+
+violation_action: "AI 必須先提出預算豁免並註明理由，或拆成多個工單。"

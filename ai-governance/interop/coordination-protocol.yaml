@@ -1,0 +1,68 @@
+# spec:coordination-protocol v1
+# AI ↔ AI 不是聊天，是狀態機。每步有允許的 message type、須產出機讀證據；並需 handshake 才動手。
+
+spec: coordination-protocol
+version: v1
+
+states:
+  - propose
+  - review
+  - approve
+  - execute
+  - verify
+  - close
+
+transitions:
+  propose: "owner 發 task ticket"
+  propose -> review: "consumer 收到並進入 review"
+  review -> approve: "consumer 回 accept + 預估需求；owner 補 inputs 或改 ticket"
+  review -> close: "consumer 回 reject + 理由"
+  approve -> execute: "consumer 動手執行"
+  execute -> verify: "產出 deliverables + 證據"
+  verify -> close: "驗收通過或失敗"
+
+message_types:
+  propose: [task_ticket]
+  review: [accept, reject]
+  accept: [accept_with_needs, accept_ready]
+  reject: [reject_with_reason]
+  approve: [inputs_provided, ticket_updated]
+  execute: [deliverables_submitted]
+  verify: [evidence_submitted]
+  close: [closed_ok, closed_fail]
+
+handshake:
+  steps:
+    - from_agent: owner
+      action: send_task_ticket
+      payload_schema: task-ticket
+      next: consumer_receives
+    - from_agent: consumer
+      action: respond_accept_or_reject
+      payload_schema: "{ accept: bool, reason?: string, required_inputs?: string[] }"
+      next: owner_responds_if_needs
+    - from_agent: owner
+      action: provide_inputs_or_update_ticket
+      payload_schema: "inputs[] or task_ticket v2"
+      next: consumer_may_execute
+  rule: "B 回 accept + 預估輸入需求；A 提供缺的 inputs（或改 ticket）；B 才能動手。防止兩邊同時做同一件事與無限重寫。"
+
+evidence_required:
+  execute: [diff, test_command, test_output_ref]
+  verify: [test_report, benchmark_ref, lint_result]
+  close: [artifact_registered_ref]
+
+# 與 policy-as-code 整合：進入 execute 前必須 policy_check_result.pass
+policy_gate:
+  before_execute: policy_check_result
+  fail_implies: "不可進入 execute 狀態"
+
+# 與 negotiation-binds 整合：message 應帶 work_contract_id
+work_contract_binding:
+  all_messages_after_handshake: work_contract_id
+  drift: reject
+
+# 與 deterministic-artifacts 整合：交付須帶 delivery_envelope
+delivery_envelope:
+  on_deliverables_submitted: required
+  schema: "#/schemas/delivery-envelope.json"

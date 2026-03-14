@@ -1,0 +1,48 @@
+---
+description: "AI 產線治理：變更前必須讀取契約並通過 Gates"
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# AI Governance 強制規則
+
+> **定位**：本規則為「軟引導」（提示工程），不是強制執行。  
+> Cursor 可能不載入或使用者關閉；產出仍可能偏離；人手改 code 可繞過。  
+> **真正能擋掉違規的是 CI**（`.github/workflows/ai-governance.yml`）與 pre-commit。請以 CI 為硬治理。
+
+當使用者要求你**修改程式碼、新增功能、重構或修 bug** 時，必須依下列順序執行：
+
+## 1. 先讀取（Must Read）
+
+在動手寫任何程式碼之前，先讀取專案內：
+
+- `ai-governance/contract.md` — 系統契約、Gates、invariants  
+- `ai-governance/modules.yaml` — 模組邊界、穩定度、allowed_changes  
+- `ai-governance/workflow.yaml` — 狀態機與 AI 允許動作  
+
+若變更可能涉及 public API 或架構，另讀：
+
+- `ai-governance/architecture.md`  
+- `ai-governance/budgets.yaml`  
+
+## 2. 產出「變更提案」（結構化）
+
+在寫 patch 前，必須先產出並自檢：
+
+- **Gate 1 Reuse-first**：要改的檔案、是否已有等價能力、若有不重用則寫 2–3 點理由。  
+- **Gate 2 Diff-only**：若為整檔重寫，確認是否符合條件（風險低、覆蓋率、穩定度、不動 public API）。  
+- **Gate 3 Complexity Budget**：新增檔案數、依賴數、public functions、複雜度是否符合 `budgets.yaml`。  
+- **Gate 4 Evidence-based**：若主張需重寫，附 bug 定位 / benchmark / failing tests 引用。  
+
+## 3. 遵守 Workflow
+
+- 僅當需求處於 **Approved** 狀態時，才撰寫 feature 程式碼。  
+- 非 Approved 時，僅能產出：spec 草案、impact analysis、implementation plan（不寫 code）。  
+
+## 4. 變更後寫入 change_log
+
+完成程式變更後，在 `ai-governance/change_log.jsonl` 追加一筆 JSON 記錄（schema 見 `change_control.md`），包含：change_id、timestamp、change_type、breaking、touched_files、rationale、rollback_plan（若 breaking）等。  
+
+---
+
+若專案中不存在 `ai-governance/` 目錄，則本規則不強制執行；若存在，則必須遵守上述流程。

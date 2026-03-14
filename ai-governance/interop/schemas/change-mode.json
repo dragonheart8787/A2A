@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/change-mode.json",
+  "title": "No Rewrite Semantics (spec:change-mode v1)",
+  "description": "協議自帶「重寫要付出代價」：change_mode、evidence、diff_budget、rollback。",
+  "type": "object",
+  "required": ["spec", "change_mode"],
+  "properties": {
+    "spec": { "const": "change-mode" },
+    "version": { "type": "string" },
+    "change_mode": {
+      "type": "string",
+      "enum": ["patch_only", "refactor_limited", "rewrite_allowed"],
+      "description": "patch_only=僅修補; refactor_limited=有限重構; rewrite_allowed=允許整檔重寫"
+    },
+    "rewrite_evidence_required_when": {
+      "type": "string",
+      "const": "rewrite_allowed"
+    },
+    "evidence": {
+      "type": "object",
+      "description": "rewrite_allowed 時必附",
+      "properties": {
+        "profiler_ref": { "type": "string" },
+        "benchmark_ref": { "type": "string" },
+        "failing_tests_ref": { "type": "string" }
+      }
+    },
+    "touching_stable_required": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "觸及 stability:stable 模組時必附",
+      "default": ["diff_budget", "rollback"]
+    },
+    "diff_budget": {
+      "type": "object",
+      "properties": {
+        "max_lines_per_file": { "type": "integer" },
+        "max_new_public_api": { "type": "integer" }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "properties": {
+        "plan": { "type": "string" },
+        "artifact_ref": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": true
+}

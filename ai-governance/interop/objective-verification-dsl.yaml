@@ -1,0 +1,27 @@
+# spec:objective-verification-dsl v1
+# 驗收條件是作文 → 改成可機械驗收的 DSL。
+
+spec: objective-verification-dsl
+version: v1
+
+schema: "#/schemas/acceptance-verification.json"
+
+test_commands:
+  rule: "tests 必須通過哪些命令（command、expected_exit、可選 timeout）。"
+  example:
+    - command: "pytest tests/ -v"
+      expected_exit: 0
+      timeout_seconds: 300
+
+metric_thresholds:
+  rule: "指標門檻：latency、memory、accuracy、diff size 等；未達則驗收失敗。"
+  example:
+    latency_p99_ms: 100
+    memory_mb: 512
+    diff_size_max_lines: 50
+    coverage_min_percent: 80
+
+regression_scenarios:
+  rule: "回歸集：必跑哪些 scenario；缺跑則驗收失敗。"
+
+result: "交付可機械驗收，agent 不用吵。"

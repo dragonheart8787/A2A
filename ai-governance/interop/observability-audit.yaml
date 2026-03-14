@@ -1,0 +1,22 @@
+# spec:observability-audit v1
+# 可追溯監控內建：法遵、稽核、事故回溯。企業買單點。
+
+spec: observability-audit
+version: v1
+
+required_on_every_message:
+  - trace_id
+  - span_id
+
+decision_log:
+  required: true
+  content: "模型理由摘要 + 依據引用（citation_refs）"
+  schema: "#/schemas/observability.json#decision_log"
+
+tool_call_audit:
+  required: true
+  rule: "每次 tool call 都要留下可審計指紋（tool, input_hash, output_ref, span_id）。"
+
+export:
+  opentelemetry: "trace/span 可映射至 W3C TraceContext；支援匯出到 OpenTelemetry。"
+  siem: "decision_log + tool_call_audit 可匯出為結構化 log（JSON/JSONL）供 SIEM 攝取。"

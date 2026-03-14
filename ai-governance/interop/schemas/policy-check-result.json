@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/policy-check-result.json",
+  "title": "Policy Check Result (接收方必須回覆)",
+  "type": "object",
+  "required": ["pass", "violated_rules"],
+  "properties": {
+    "pass": { "type": "boolean", "description": "policy 檢查是否通過" },
+    "violated_rules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "違反的規則 id 或描述"
+    },
+    "policy_context_hash": { "type": "string", "description": "所檢查的 policy_context 的 hash" }
+  },
+  "additionalProperties": true
+}

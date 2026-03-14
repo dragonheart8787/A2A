@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/modules-spec.json",
+  "title": "Modules (spec:modules v1)",
+  "type": "object",
+  "required": ["modules"],
+  "properties": {
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "owner", "stability", "path", "allowed_changes", "allowed_rewrite"],
+        "properties": {
+          "name": { "type": "string" },
+          "owner": { "type": "string" },
+          "stability": { "type": "string", "enum": ["experimental", "beta", "stable", "deprecated"] },
+          "path": { "type": "string" },
+          "public_api": { "type": "array", "items": { "type": "string" } },
+          "allowed_changes": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["bugfix", "perf", "refactor", "feature", "security"] }
+          },
+          "allowed_rewrite": { "type": "boolean" }
+        }
+      }
+    },
+    "dependency_allowlist": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "approved": { "type": "boolean" },
+          "version": { "type": "string" }
+        }
+      }
+    },
+    "import_rules": { "type": "array", "items": { "type": "object" } }
+  },
+  "additionalProperties": true
+}

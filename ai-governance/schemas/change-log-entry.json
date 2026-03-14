@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/change-log-entry.json",
+  "title": "Change Log Entry (schema v1)",
+  "type": "object",
+  "required": ["schema", "change_id", "timestamp", "change_type", "breaking", "touched_files", "rationale", "impact_areas"],
+  "properties": {
+    "schema": { "type": "string", "enum": ["v1"] },
+    "change_id": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string" },
+    "commit_id": { "type": "string" },
+    "change_type": { "type": "string", "enum": ["bugfix", "refactor", "feature", "security", "perf"] },
+    "breaking": { "type": "boolean" },
+    "touched_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 0
+    },
+    "rationale": { "type": "string", "minLength": 1 },
+    "evidence": { "type": "string" },
+    "rollback_plan": { "type": "string" },
+    "impact_areas": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["API", "data", "performance", "security"] }
+    },
+    "_comment": { "type": "string" }
+  },
+  "additionalProperties": true,
+  "if": { "properties": { "breaking": { "const": true } }, "required": ["breaking"] },
+  "then": { "required": ["rollback_plan"], "properties": { "rollback_plan": { "type": "string", "minLength": 1 } } }
+}

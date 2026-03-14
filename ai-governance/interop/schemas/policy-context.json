@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/policy-context.json",
+  "title": "Policy-as-Code (spec:policy-context v1)",
+  "description": "協議 message 必須帶 policy_context；接收方必須回 policy_check_result；fail 就不能 execute。",
+  "type": "object",
+  "required": ["spec"],
+  "properties": {
+    "spec": { "const": "policy-context" },
+    "version": { "type": "string" },
+    "contract_hash": { "type": "string", "description": "指向 contract 的 hash（ai-governance 契約快照）" },
+    "modules_hash": { "type": "string" },
+    "budgets_hash": { "type": "string" },
+    "invariants_ref": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

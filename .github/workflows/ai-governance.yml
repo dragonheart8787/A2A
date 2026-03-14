@@ -1,0 +1,64 @@
+# CI gate：PR 不通過不能 merge。讓系統可以說「不」。
+name: AI Governance
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  schema:
+    name: Schema 驗證
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -r ai-governance/scripts/requirements.txt
+
+      - name: Validate spec blocks
+        run: python ai-governance/scripts/validate_schemas.py
+
+  enforce:
+    name: 五條 MVP 校驗
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -r ai-governance/scripts/requirements.txt
+
+      - name: Enforcement（變更須有 change_log、touched_files 一致、stable 限制、依賴 allowlist、breaking 須 rollback）
+        env:
+          GOVERNANCE_CI_BASE: ${{ github.event.pull_request.base.sha || 'HEAD^' }}
+        run: |
+          python ai-governance/scripts/enforce.py 2>&1 | tee enforce.log
+
+      - name: 於 PR 留言缺失項（僅在 enforce 失敗且為 PR 時）
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const log = fs.existsSync('enforce.log') ? fs.readFileSync('enforce.log', 'utf8') : '見 Actions 日誌';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## AI Governance 未通過\n\n請補齊以下項目後再提交：\n\n\`\`\`\n${log}\n\`\`\`\n\n- 所有程式變更須在 \`ai-governance/change_log.jsonl\` 新增一筆\n- \`touched_files\` 須與實際 git diff 一致\n- 觸及 \`stability: stable\` 模組時單檔變更行數不得超過預算\n- 新增依賴須在 \`modules.yaml\` \`dependency_allowlist\` 核准\n- \`breaking: true\` 時必填 \`rollback_plan\``
+            });

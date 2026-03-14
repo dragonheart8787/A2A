@@ -1,0 +1,36 @@
+# spec:conflict-ownership v1
+# 衝突處理與責任邊界。沒有這層，多代理會把 repo 撕裂。
+
+spec: conflict-ownership
+version: v1
+
+ownership:
+  - scope: "ai-governance/*"
+    owner: human_or_orchestrator
+    agent_id_or_human: human
+  - scope: "src/api/*"
+    owner: api-owner-agent
+    agent_id_or_human: api-owner-agent
+  - scope: "modules.yaml"
+    owner: human_or_orchestrator
+    agent_id_or_human: human
+
+arbiter:
+  default: human
+  by_scope:
+    "src/api/*": human
+    "tests/*": example-code-agent
+
+parallel_edits:
+  same_file_allowed: false
+  same_module_allowed: false
+  rule: "同一個檔案不允許多代理並行改；同一模組預設不並行。"
+
+merge_policy:
+  strategy: rebase
+  required_checks:
+    - schema_validation
+    - enforce_mvp
+    - unit_tests
+  approval_required: true
+  rule: "合併前必跑 schema、enforce、tests；必要時 human 簽核。"

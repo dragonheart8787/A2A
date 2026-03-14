@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/delivery-envelope.json",
+  "title": "Deterministic Delivery Envelope (spec:delivery-envelope v1)",
+  "description": "每次交付必附：artifact_hash、build_repro、inputs_hash、test_report_hash。Agent 僅能基於 artifact 工作。",
+  "type": "object",
+  "required": ["spec", "artifact_hash", "build_repro", "inputs_hash", "test_report_hash"],
+  "properties": {
+    "spec": { "const": "delivery-envelope" },
+    "version": { "type": "string" },
+    "artifact_hash": { "type": "string", "description": "交付物 content hash (e.g. sha256)" },
+    "build_repro": {
+      "type": "object",
+      "description": "可重現建置指令/環境",
+      "properties": {
+        "command": { "type": "string" },
+        "env_ref": { "type": "string" },
+        "reproducible_ref": { "type": "string" }
+      }
+    },
+    "inputs_hash": {
+      "type": "string",
+      "description": "所有 input artifact 的聯合 hash 或 merkle 根"
+    },
+    "test_report_hash": {
+      "type": "string",
+      "description": "驗收測試報告的 content hash"
+    },
+    "provenance_chain_ref": { "type": "string", "description": "provenance chain / SBOM 引用" }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,33 @@
+# spec:artifact-registry v1
+# 共享工件登記：AI 之間引用同一份「真相」。A 改完、B 用 artifact_id + version/hash 取用。
+
+spec: artifact-registry
+version: v1
+
+artifacts:
+  - artifact_id: spec-api-canon
+    content_hash: null
+    version: v1
+    lineage: []
+    location: ai-governance/architecture.md
+    schema_type: spec
+    immutability: append_only
+    trust: trusted
+
+  - artifact_id: modules-boundary
+    version: v1
+    lineage: []
+    location: ai-governance/modules.yaml
+    schema_type: spec
+    immutability: append_only
+    trust: trusted
+
+  - artifact_id: change-log
+    version: v1
+    lineage: []
+    location: ai-governance/change_log.jsonl
+    schema_type: spec
+    immutability: append_only
+    trust: trusted
+
+  # 新增 artifact 時在此登記；content_hash 可於 CI 寫入以達 content-addressed 引用

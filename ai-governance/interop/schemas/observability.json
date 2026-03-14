@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/observability.json",
+  "title": "Observability & Audit (trace_id, span_id, decision_log, tool_call_audit)",
+  "type": "object",
+  "required": ["spec", "trace_id"],
+  "properties": {
+    "spec": { "const": "observability" },
+    "version": { "type": "string" },
+    "trace_id": { "type": "string", "description": "全鏈路 trace" },
+    "span_id": { "type": "string", "description": "當前 span" },
+    "parent_span_id": { "type": "string" },
+    "decision_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reason_summary": { "type": "string" },
+          "citation_refs": { "type": "array", "items": { "type": "string" } },
+          "timestamp": { "type": "string" }
+        }
+      }
+    },
+    "tool_call_audit": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tool": { "type": "string" },
+          "input_hash": { "type": "string" },
+          "output_ref": { "type": "string" },
+          "span_id": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

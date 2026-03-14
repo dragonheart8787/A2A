@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/task-ticket.json",
+  "title": "Task Ticket (spec:task-ticket v1)",
+  "description": "AI 工單語言：交付給其他 AI 的通用任務物件",
+  "type": "object",
+  "required": ["spec", "task_id", "owner_agent", "consumer_agent", "objective", "acceptance_criteria", "deliverables", "handoff_protocol"],
+  "properties": {
+    "spec": { "const": "task-ticket" },
+    "version": { "type": "string", "default": "v1" },
+    "task_id": { "type": "string", "minLength": 1 },
+    "owner_agent": { "type": "string", "description": "發出工單的 agent_id" },
+    "consumer_agent": { "type": "string", "description": "承接的 agent_id" },
+    "objective": { "type": "string", "minLength": 1, "description": "可驗證的目標" },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "驗收條件"
+    },
+    "inputs": {
+      "type": "array",
+      "description": "可引用 artifact，不能只靠自然語言",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "ref"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "ref": { "type": "string" },
+          "version": { "type": "string" },
+          "role": { "type": "string" }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "budget": { "type": "object" },
+        "forbidden_changes": { "type": "array", "items": { "type": "string" } },
+        "risk_level": { "type": "string", "enum": ["low", "medium", "high"] }
+      }
+    },
+    "deliverables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["file", "patch", "spec", "report", "api_response"] },
+          "path_or_schema": { "type": "string" },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "handoff_protocol": {
+      "type": "string",
+      "enum": ["pr", "patch", "report", "api_response", "artifact_register"],
+      "description": "交付方式"
+    },
+    "state": {
+      "type": "string",
+      "enum": ["proposed", "accepted", "rejected", "in_progress", "verify", "closed"],
+      "default": "proposed"
+    },
+    "work_contract_id": { "type": "string", "description": "綁定協商後的 WorkContract" },
+    "change_mode": { "type": "string", "enum": ["patch_only", "refactor_limited", "rewrite_allowed"] },
+    "acceptance_verification": { "$ref": "#/$defs/acceptance_verification" }
+  },
+  "$defs": {
+    "acceptance_verification": {
+      "type": "object",
+      "properties": {
+        "test_commands": { "type": "array" },
+        "metric_thresholds": { "type": "object" },
+        "regression_scenarios": { "type": "array" }
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,29 @@
+# spec:adr v1
+# 範例：僅供理解格式，可刪除或改為實際決策
+
+id: ADR-0001
+title: "採用 YAML spec block 作為 AI 可機讀契約格式"
+status: accepted
+date: "2025-03-01"
+supersedes: null
+
+context:
+  background: "純 Markdown 易導致 AI 自由發揮，需要半結構化、可驗證的區塊。"
+  constraints: "需兼顧人讀與機讀、版本可追蹤。"
+
+options:
+  - name: "純 JSON 檔"
+    pros: ["嚴格 schema"]
+    cons: ["人讀性差、不利註解"]
+  - name: "Markdown 內嵌 YAML spec block"
+    pros: ["人機皆可讀、可版本化、type+version 明確"]
+    cons: ["需約定解析方式"]
+
+decision: "採用 Markdown 內嵌 YAML（spec:type vN），由 AI 與工具依 type+version 解讀。"
+
+consequences:
+  positive: ["AI 行為可約束", "變更可對照 schema 檢查"]
+  negative: ["需維護 schema 一致性"]
+  follow_ups: []
+
+references: []

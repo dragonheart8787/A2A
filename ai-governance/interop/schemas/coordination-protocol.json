@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/coordination-protocol.json",
+  "title": "Coordination Protocol (spec:coordination v1)",
+  "description": "狀態機 + Handshake：propose → review → approve → execute → verify → close",
+  "type": "object",
+  "required": ["spec", "states", "transitions", "message_types", "handshake", "evidence_required"],
+  "properties": {
+    "spec": { "const": "coordination-protocol" },
+    "version": { "type": "string" },
+    "states": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transitions": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "message_types": {
+      "type": "object",
+      "description": "每步允許的 message type",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "handshake": {
+      "type": "object",
+      "required": ["steps"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from_agent": { "type": "string" },
+              "action": { "type": "string" },
+              "payload_schema": { "type": "string" },
+              "next": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "evidence_required": {
+      "type": "object",
+      "description": "每步要求輸出的機讀證據",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": true
+}

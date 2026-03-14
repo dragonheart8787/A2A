@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/provenance-chain.json",
+  "title": "Provenance Chain (SBOM-like for agents)",
+  "type": "object",
+  "required": ["spec", "entries"],
+  "properties": {
+    "spec": { "const": "provenance-chain" },
+    "version": { "type": "string" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "content_hash", "source"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "content_hash": { "type": "string" },
+          "source": { "type": "string" },
+          "derived_from": { "type": "array", "items": { "type": "string" } },
+          "trust": { "type": "string", "enum": ["trusted", "verified", "untrusted"] }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

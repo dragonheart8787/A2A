@@ -1,0 +1,35 @@
+# spec:adr v1
+# Architecture Decision Record — 機讀化決策帳本
+# 複製此檔並更名為 ADR-0001.yaml, ADR-0002.yaml ...
+
+id: ADR-0000
+title: "[決策標題]"
+status: proposed   # proposed | accepted | deprecated | superseded
+date: "YYYY-MM-DD"
+supersedes: null   # 若被取代，填 ADR-XXXX
+
+context:
+  background: "[為什麼要做這個決策]"
+  constraints: "[技術/業務約束]"
+
+options:
+  - name: "[選項 A]"
+    pros: []
+    cons: []
+  - name: "[選項 B]"
+    pros: []
+    cons: []
+
+decision: "[最終選擇的選項與一句話理由]"
+
+consequences:
+  positive: []
+  negative: []
+  follow_ups: []   # 後續要補的 ADR 或工單
+
+# 可追溯性
+references:
+  - type: commit | pr | issue
+    id: "[id]"
+  - type: doc
+    path: "[路徑]"

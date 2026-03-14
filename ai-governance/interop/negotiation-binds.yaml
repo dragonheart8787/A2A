@@ -1,0 +1,21 @@
+# spec:negotiation-binds v1
+# 可約束協商：先交換 capability + constraints，再產生 WorkContract (hash)，後續不可漂移。
+
+spec: negotiation-binds
+version: v1
+
+sequence:
+  - step: exchange_capability_constraints
+    from: [owner, consumer]
+    output: "雙方 capability + constraints 已交換"
+  - step: produce_work_contract
+    input: "上述快照 + task scope"
+    output: "WorkContract (work_contract_id + contract_hash)"
+  - step: bind_subsequent_actions
+    rule: "後續所有 message / task / delivery 都必須帶 work_contract_id；不可脫離該 contract 的 scope。"
+
+work_contract_schema: "#/schemas/work-contract.json"
+
+drift_policy:
+  message_without_work_contract_id: reject
+  scope_outside_work_contract: reject

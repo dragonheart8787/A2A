@@ -1,0 +1,20 @@
+# spec:deterministic-artifacts v1
+# 交付物為第一公民：從「聊天」拉到「供應鏈」。
+
+spec: deterministic-artifacts
+version: v1
+
+rule: "任何 agent 只能基於 artifact 工作，不能基於「我記得你說過」。"
+
+delivery_required_fields:
+  - artifact_hash
+  - build_repro
+  - inputs_hash
+  - test_report_hash
+
+delivery_envelope_schema: "#/schemas/delivery-envelope.json"
+
+input_policy:
+  all_inputs_must_be_artifact_refs: true
+  natural_language_only_for_descriptions: true
+  artifact_ref_format: "{ artifact_id, ref, version?, content_hash? }"

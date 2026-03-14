@@ -1,0 +1,38 @@
+# spec:security-trust v1
+# 多代理最大坑：prompt injection via shared artifacts、tool-chain 組合漏洞（A 能讀檔 + B 能執行 → RCE）。
+# 安全性不是加法，是乘法。
+
+spec: security-trust
+version: v1
+
+capability_auth:
+  default_deny: true
+  per_agent_capabilities: {}
+  capability_token: "每個 agent 的 tool 權限以 capability token 發放（最小權限）；token 可撤銷、可限時。"
+  rule: "權限最小化；每個 agent 僅能使用其 agent-identity 宣告的 tools。"
+
+artifact_trust:
+  trust_levels: [trusted, verified, untrusted]
+  untrusted_handling: "untrusted 必須走 sandbox pipeline，不可直接作為執行依據；僅可讀取並標註來源，需 human 審核後才納入 trusted。"
+  rule: "引用 artifact 時必須帶 trust 標記；來自未登記來源的 artifact 視為 untrusted。"
+
+provenance_chain:
+  required: true
+  description: "協議強制提供 provenance chain（像 SBOM 一樣，只是給 agent）：artifact 來源、衍生關係、簽署/雜湊。"
+  schema_ref: "#/schemas/provenance-chain.json"
+
+tool_sandbox:
+  filesystem_allowlist: ["src/", "tests/", "ai-governance/", "docs/"]
+  network_allowlist: []
+  no_exec_unsanitized: true
+  rule: "A 能讀檔、B 能執行時，禁止將 untrusted 內容傳入執行；filesystem/network 依 allowlist。"
+
+evidence_reproducibility:
+  test_command_required: true
+  hash_or_version_required: true
+  rule: "evidence 必須可重現：附 test command、artifact hash 或 version。"
+
+risks:
+  - "Prompt injection via shared artifacts：untrusted artifact 內容可能含惡意指令，須隔離執行環境。"
+  - "Tool-chain 組合漏洞：多代理權限組合可能超出單一代理設計，須做組合矩陣檢查。"
+  - "MCP/工具生態曾出現工具組合安全問題；多代理系統須假設「任一環節不可信」。"

@@ -1,0 +1,16 @@
+# spec:version-matrix v1
+# 哪些 spec 版本被允許；CI 只接受此矩陣內的 type+version。
+# 新增版本時在此登記，並提供對應 schema。
+
+allowed:
+  contract: ["v1"]
+  modules: ["v1"]
+  workflow: ["v1"]
+  change_control: ["v1"]
+  change_log_entry: ["v1"]
+  adr: ["v1"]
+  budgets: ["v1"]
+
+# 向後相容：當 spec 升級到 v2 時，可標註 v1 是否仍接受
+deprecations: {}
+# 例: contract: { v1: "2025-06-01" }  # v1 在此日後不再接受

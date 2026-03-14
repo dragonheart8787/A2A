@@ -1,0 +1,33 @@
+# spec:workflow v1
+# 狀態機：沒有工單就沒有功能。AI 僅在 Approved 狀態可寫 feature 程式碼。
+
+states:
+  - Idea
+  - Proposed
+  - Approved
+  - Implemented
+  - Verified
+  - Released
+
+transitions:
+  Idea -> Proposed: "撰寫 spec 草案 / impact analysis / implementation plan"
+  Proposed -> Approved: "審核通過（人或自動檢查 gates）"
+  Approved -> Implemented: "AI 可動手寫 code"
+  Implemented -> Verified: "tests / lint / benchmarks 通過"
+  Verified -> Released: "合併 / 發布"
+
+ai_allowed_actions:
+  - state: Idea
+    allowed: [write_spec_draft, write_impact_analysis, write_implementation_plan]
+    forbidden: [production_code]
+  - state: Proposed
+    allowed: [update_spec]
+    forbidden: [production_code]
+  - state: Approved
+    allowed: [write_production_code]
+    required: [must_follow_gates, must_log_to_change_log]
+  - state: [Implemented, Verified, Released]
+    allowed: [patch_bugfix_only]
+    forbidden: [scope_expansion]
+
+rule: "非 Approved 的需求，AI 不得撰寫 feature 程式碼；僅能產出 spec / impact / plan。"

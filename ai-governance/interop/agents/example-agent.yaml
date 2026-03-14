@@ -1,0 +1,39 @@
+# spec:agent-identity v1
+# 範例：單一代理的身份與能力宣告。每個參與對接的 AI 應有一份。
+
+spec: agent-identity
+version: v1
+agent_id: example-code-agent
+display_name: "Example Code Agent"
+
+capabilities:
+  - code_review
+  - backend_impl
+  - spec_writing
+  - patch_generation
+
+constraints:
+  - "不修改 stability: stable 模組的 public API"
+  - "不新增未在 dependency_allowlist 的依賴"
+  - "僅在 coordination 狀態為 approved 時執行寫入"
+
+tools:
+  filesystem: allowlist
+  allowlist_paths: ["src/", "tests/", "ai-governance/"]
+  network: outbound_allowlist
+  network_allowlist: ["api.example.com"]
+  sandbox: restricted
+  tool_names: ["read_file", "search_replace", "run_tests"]
+
+io_schema:
+  input:
+    description: "Task ticket (see task-ticket schema)"
+    ref: "#/schemas/task-ticket.json"
+  output:
+    description: "Patch / report / API response per handoff_protocol"
+    types: ["patch", "report", "api_response"]
+
+sla:
+  response_deadline_seconds: 300
+  max_context_tokens: 128000
+  cost_ceiling_per_task: "configurable"

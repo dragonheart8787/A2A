@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/workflow-spec.json",
+  "title": "Workflow (spec:workflow v1)",
+  "type": "object",
+  "required": ["states", "transitions", "ai_allowed_actions", "rule"],
+  "properties": {
+    "states": { "type": "array", "items": { "type": "string" } },
+    "transitions": { "type": "object" },
+    "ai_allowed_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "state": {},
+          "allowed": { "type": "array" },
+          "forbidden": { "type": "array" },
+          "required": { "type": "array" }
+        }
+      }
+    },
+    "rule": { "type": "string" }
+  },
+  "additionalProperties": true
+}
