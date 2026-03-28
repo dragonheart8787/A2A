@@ -1,0 +1,36 @@
+# spec:capability-token v1
+# 此為 GaaP Demo 實際發放的 Token 範例（對應 agent_server.py 的 DEMO_TOKEN）
+# 在真實系統中由 EphemeralTokenRegistry.issue() 產生；此檔為其持久化快照。
+
+spec: capability-token
+version: v1
+
+token_id: "tok-demo-001-abc123"
+agent_id: "demo-client-agent"
+work_contract_id: "WC-DEMO-001"
+task_id: null
+
+scoped_capabilities:
+  - capability: "code_review"
+    allowed_operations: ["read"]
+  - capability: "backend_impl"
+    allowed_operations: ["read", "write"]
+  - capability: "read_file"
+    allowed_paths: ["examples/", "tests/"]
+    allowed_operations: ["read"]
+
+issued_at: "2026-03-28T02:30:00Z"
+expires_at: "2026-03-28T03:30:00Z"
+revoked: false
+
+issuer_agent_id: "gaap-demo-agent"
+
+rotation_policy:
+  auto_rotate_before_expiry_seconds: 60
+  max_rotations: 5
+
+# 執行記錄（來自 S1 Demo 場景）
+_execution_note: |
+  此 token 在 demo_full_flow.py S1 場景中驗證通過。
+  EphemeralTokenValidator.validate() 回傳：
+    [PASS] EphemeralToken: Token 有效（剩餘 300 秒，能力 'backend_impl' 已授權）

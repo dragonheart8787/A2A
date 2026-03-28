@@ -1,0 +1,66 @@
+# spec:adr v1
+# ADR-0002：GaaP 執行期採用 Python stdlib only（零額外依賴）
+
+id: ADR-0002
+title: "GaaP 執行期（gaap_runtime.py 等）採用 Python stdlib only，不引入任何第三方依賴"
+status: accepted
+date: "2026-03-28"
+supersedes: null
+
+context:
+  background: |
+    GaaP 的核心價值主張之一是「可直接 demo、可立即執行」。若執行期需要安裝
+    FastAPI、pydantic、httpx 等依賴，使用者需要 pip install，增加摩擦。
+    同時，依賴越多，攻擊面越大，與 GaaP 的安全治理定位矛盾。
+  constraints:
+    - "Demo 必須可在 clone 後立即執行（python examples/demo_full_flow.py）"
+    - "Agent Server 必須無需 pip install 即可啟動（python examples/agent_server.py）"
+    - "Token registry、Consent Gate 等狀態管理在 demo 場景用 in-memory 即可"
+    - "CI / enforcement 層可使用 pyyaml、jsonschema（已列入 allowlist）"
+
+options:
+  - name: "使用 FastAPI + pydantic（industry standard）"
+    pros:
+      - "自動 OpenAPI 文件"
+      - "型別驗證更嚴格"
+      - "生態系整合更容易"
+    cons:
+      - "增加 uvicorn、starlette、pydantic 等依賴"
+      - "clone 後需要 pip install 才能跑 demo"
+      - "與「無需安裝即可 demo」的核心承諾衝突"
+
+  - name: "Python stdlib only（http.server、dataclasses、hashlib、uuid）"
+    pros:
+      - "zero external dependencies"
+      - "clone 即可執行"
+      - "符合 GaaP 安全治理定位（最小攻擊面）"
+      - "任何 Python 3.9+ 環境直接可用"
+    cons:
+      - "缺乏自動 OpenAPI 文件"
+      - "型別驗證需手動實作"
+      - "不適合 production scale（需換用 ASGI framework）"
+
+decision: |
+  採用 stdlib only。GaaP v2.0.0 的核心目的是展示治理概念與 API 可行性，
+  不是生產就緒的 server framework。部署者可自行用 FastAPI / aiohttp 包裝
+  gaap_runtime.py 的函式庫層，server 層替換不影響 API canon。
+
+consequences:
+  positive:
+    - "demo_full_flow.py 與 agent_server.py 無需 pip install 即可執行"
+    - "INV-DEP-003（核心不得引入 stdlib 外依賴）有充分理由支撐"
+    - "攻擊面最小化，符合 security-trust.yaml 精神"
+  negative:
+    - "agent_server.py 使用 http.server.BaseHTTPRequestHandler，不支援 async"
+    - "production 部署需要包裝層（documented in examples/README.md）"
+  follow_ups:
+    - "若需要 production server，建議建立 examples/gaap_fastapi_server.py 作為可選擴充（不替換現有 agent_server.py）"
+    - "token registry 的持久化方案可作為獨立 ADR 決策"
+
+references:
+  - type: commit
+    id: "9789336"
+  - type: doc
+    path: "examples/gaap_runtime.py"
+  - type: doc
+    path: "ai-governance/contract.md#INV-DEP-003"

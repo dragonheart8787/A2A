@@ -9,26 +9,36 @@
 
 ```yaml
 # spec:contract v1
-project: "[PROJECT_NAME]"   # 替換為實際專案名稱
-version: "1.0.0"
+project: "GaaP — Governance-as-a-Protocol"
+version: "2.0.0"
 
 scope:
   in:
-    - "[專案範圍內項目 1]"
-    - "[專案範圍內項目 2]"
+    - "GaaP 執行期函式庫（gaap_runtime.py）：七大模組的 Python 實作"
+    - "A2A-compatible Agent Server / Client（examples/agent_server.py、agent_client.py）"
+    - "AI 治理規格（ai-governance/）：契約、架構、模組、工作流程、預算"
+    - "AI↔AI 互通協定（interop/）：身份、工單、工件、協作、安全、七大 GaaP 模組"
+    - "CI / pre-commit 硬治理（enforce.py 七條 MVP）"
+    - "JSON Schema 機驗層（schemas/、interop/schemas/）"
   out:
-    - "[明確排除項目 1，例如：rewrite GUI framework]"
-    - "[明確排除項目 2，例如：replace database layer]"
+    - "生產環境 LLM API 封裝（非本 repo 範疇，屬上層應用）"
+    - "使用者介面 / Dashboard（治理層不提供 UI）"
+    - "特定 LLM 廠商 SDK 整合（框架無關；呼叫者自行橋接）"
+    - "資料庫儲存層（token registry、consent log 預設 in-memory；持久化由部署層決定）"
 
 invariants:
   - id: INV-API-001
-    rule: "Public API signatures under 約定路徑 不得變更；僅允許 minor/patch。"
+    rule: "gaap_runtime.py 的 GaaPGateway.authorize_execute 與 verify_delivery 簽名不得破壞相容性；僅允許向後相容的參數新增（keyword-only，有預設值）。"
   - id: INV-MOD-002
-    rule: "標記為 stable 的模組不得重寫；僅允許 patch-level 編輯（bugfix/perf）。"
+    rule: "標記為 stability: stable 的模組（gaap_runtime、enforce、validate_schemas）不得整檔重寫；僅允許 patch-level 編輯（bugfix / perf）。"
   - id: INV-DEP-003
-    rule: "新增依賴必須經 Allowlist 審核並寫入 dependency allowlist。"
+    rule: "核心執行期（gaap_runtime.py、demo_full_flow.py、agent_server.py、agent_client.py）不得新增超出 Python stdlib 的依賴；驗證層（enforce.py、validate_*.py）僅允許 pyyaml、jsonschema。"
   - id: INV-BREAK-004
     rule: "Breaking change 必須附 rollback_plan、影響面清單與 semver major bump。"
+  - id: INV-SCHEMA-005
+    rule: "所有 interop/schemas/*.json 的 required 欄位不得移除；只能新增可選欄位（additionalProperties: true）。"
+  - id: INV-DRIFT-006
+    rule: "SemanticDriftDetector.AUTO_REJECT_THRESHOLD（0.40）不得在未附 evidence 的情況下調高；調高視為 breaking change。"
 
 gates_required: true
 workflow_required: true
@@ -65,7 +75,7 @@ output_schema:
 - risk: low
 - test_coverage: ">= 80%"
 - module_stability: beta | experimental
-- impact: 不觸動 public API
+- impact: 不觸動 GaaPGateway public API
 
 ```yaml
 # spec:gate-diff v1
@@ -79,12 +89,12 @@ full_rewrite_allowed_when:
 
 ### Gate 3：Complexity Budget（複雜度預算）
 
-每次改動必須符合 `budgets.yaml` 定義之預算（見同目錄）。
+每次改動必須符合 `budgets.yaml` 定義之預算：
 
-- 新增檔案數上限
-- 新增依賴上限
-- 新增 public functions 上限
-- Cyclomatic complexity 不得無故上升（或僅 +N，由 budget 定義）
+- 新增檔案數上限：3
+- 新增依賴上限：0（核心）/ 1（驗證層）
+- 新增 public functions 上限：5
+- Cyclomatic complexity delta：≤ +2
 
 ### Gate 4：Evidence-based（憑證驅動）
 
@@ -110,13 +120,15 @@ required_for_rewrite:
 - **Spec 區塊**：每個區塊標註 `type + version`（如 `spec:contract v1`）。
 - **模組穩定度**：`experimental` | `beta` | `stable` | `deprecated`。
 - **API Semver**：major = breaking；minor = 向後相容新功能；patch = bugfix/內部改動。
+- **執行期版本**：`gaap_runtime.py` 版本對應 `GaaPGateway` API 版本，見 `architecture.md`。
 
 ---
 
 ## 依賴與邊界
 
-- **allowed_imports**：禁止跨層引用（由 `architecture.md` / `modules.yaml` 定義層級）。
-- **dependency_allowlist**：新增依賴必須寫入 allowlist 並標註審核狀態。
+- **核心執行期依賴**：Python stdlib only（hashlib、uuid、time、dataclasses、http.server）
+- **驗證層依賴**：pyyaml >= 6.0、jsonschema >= 4.0
+- **dependency_allowlist**：見 `modules.yaml`；新增依賴必須先登記並標註 approved: true
 
 ---
 

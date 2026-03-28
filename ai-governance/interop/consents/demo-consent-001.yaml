@@ -1,0 +1,46 @@
+# spec:consent-manifest v1
+# 此為 GaaP Demo 實際記錄的 Consent 範例（對應 agent_server.py 的 DEMO_CONSENT）
+# 在真實系統中由 ConsentGate.request_consent() + grant() 產生；此檔為其稽核軌跡。
+
+spec: consent-manifest
+version: v1
+
+consent_id: "consent-demo-001-e5ca75ff"
+task_id: "DEMO-TASK-001"
+work_contract_id: "WC-DEMO-001"
+
+operation_type: "read_file"
+sensitive_fields:
+  - "source_code"
+  - "api_keys_config"
+
+consent_required_from: "human"
+status: "granted"
+
+requested_at: "2026-03-28T02:30:00Z"
+granted_at: "2026-03-28T02:30:05Z"
+granted_by: "demo-human@example.com"
+expires_at: "2026-03-28T03:30:00Z"
+
+scope_description: |
+  demo-client-agent 請求讀取 examples/ 目錄下的原始碼，
+  用於 GaaP Demo 的 backend_impl 任務執行。
+  不涉及 payment 或 PII，風險等級：low。
+
+audit_trail:
+  - event: "requested"
+    timestamp: "2026-03-28T02:30:00Z"
+    actor: "demo-client-agent"
+    note: "GaaP Demo 場景 S1 觸發"
+  - event: "granted"
+    timestamp: "2026-03-28T02:30:05Z"
+    actor: "demo-human@example.com"
+    note: "審核 scope_description 後授予"
+
+# 執行記錄（來自 S1 Demo 場景）
+_execution_note: |
+  此 consent 在 demo_full_flow.py S1 場景中驗證通過。
+  ConsentGate.check() 回傳：
+    [PASS] ConsentGate: 同意已授予（由 'human@example.com'，操作 'read_sensitive_data'）
+  S3 場景展示無 consent 時：
+    [FAIL] ConsentGate: 敏感操作 'credential_access' 缺少 consent_grant_ref

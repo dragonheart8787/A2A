@@ -1,0 +1,64 @@
+# spec:agent-reputation v1
+# 此為 example-code-agent 的真實信任評分記錄（基於 TASK-001 的執行歷史）
+# 在真實系統中由 TrustScoreEngine 維護；此檔為其持久化快照。
+
+spec: agent-reputation
+version: v1
+
+agent_id: "example-code-agent"
+trust_score: 0.82
+last_updated: "2026-03-28T02:00:00Z"
+
+score_basis:
+  tasks_completed: 47
+  tasks_failed: 2
+  policy_violations: 0
+  drift_incidents: 1
+  consent_violations: 0
+  rollback_triggered: 1
+
+capability_grants:
+  tier: "full"
+  allowed_capabilities:
+    - "code_review"
+    - "backend_impl"
+    - "spec_writing"
+    - "patch_generation"
+  forbidden_capabilities: []
+
+score_history:
+  - timestamp: "2026-03-28T01:00:00Z"
+    score: 0.70
+    delta: 0.0
+    reason: "初始分數"
+    task_id: null
+  - timestamp: "2026-03-28T01:30:00Z"
+    score: 0.72
+    delta: +0.02
+    reason: "TASK-001 完成（gaap_runtime 測試任務）"
+    task_id: "TASK-001"
+  - timestamp: "2026-03-28T01:45:00Z"
+    score: 0.64
+    delta: -0.08
+    reason: "drift_incident：deliverable 覆蓋率差距（已修正）"
+    task_id: "TASK-001"
+  - timestamp: "2026-03-28T02:00:00Z"
+    score: 0.82
+    delta: +0.18
+    reason: "連續 9 次任務完成（demo scenarios S1-S7 驗證）"
+    task_id: "TASK-DEMO-001"
+
+decay_policy:
+  decay_rate_per_day: 0.001
+  minimum_floor: 0.1
+
+anti_gaming:
+  max_score_gain_per_task: 0.05
+  cooldown_after_violation_hours: 48
+
+# 執行記錄
+_execution_note: |
+  此記錄對應 demo_full_flow.py S4 場景的對照組（高分代理通過）。
+  S4 場景展示低分代理（score=0.00，sandbox_only）：
+    [FAIL] TrustScore: Agent 信任分數 0.00（sandbox_only），低於要求 standard tier
+  本記錄代理（score=0.82，full tier）可執行所有已宣告能力。

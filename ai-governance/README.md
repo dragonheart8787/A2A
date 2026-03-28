@@ -57,15 +57,17 @@
 
 ---
 
-## 五條 MVP 校驗（CI 強制）
+## 七條 MVP 校驗（CI 強制）
 
 1. **所有變更必須新增一筆 change_log.jsonl**  
 2. **touched_files 必須與 git diff 一致**（自動比對）  
 3. **觸及 stability: stable 模組**：禁止大改（單檔 diff 行數 ≤ `budgets.yaml` 之 `stable_module_max_diff_lines`，預設 50）  
 4. **新增依賴**必須在 `modules.yaml` 之 `dependency_allowlist`，否則 fail  
 5. **breaking change** 必須標註且附 `rollback_plan`，否則 fail  
+6. **[MVP 6] resource_budget** 若存在，`actual_usage` 不得超出 `limits`（token cost、compute、tool calls）  
+7. **[MVP 7] 含敏感操作的 task**，`delivery_envelope` 必須帶 `consent_grant_ref`  
 
-實作於 `ai-governance/scripts/enforce.py`。
+實作於 `ai-governance/scripts/enforce.py`（7 條全部可機執行）。
 
 ---
 

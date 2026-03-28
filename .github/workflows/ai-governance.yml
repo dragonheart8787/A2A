@@ -28,7 +28,7 @@ jobs:
         run: python ai-governance/scripts/validate_schemas.py
 
   enforce:
-    name: 五條 MVP 校驗
+    name: 七條 MVP 校驗
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
       - name: Install deps
         run: pip install -r ai-governance/scripts/requirements.txt
 
-      - name: Enforcement（變更須有 change_log、touched_files 一致、stable 限制、依賴 allowlist、breaking 須 rollback）
+      - name: Enforcement（7條 MVP：change_log / touched_files / stable限制 / allowlist / rollback / resource_budget / consent_gate）
         env:
           GOVERNANCE_CI_BASE: ${{ github.event.pull_request.base.sha || 'HEAD^' }}
         run: |
@@ -60,5 +60,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## AI Governance 未通過\n\n請補齊以下項目後再提交：\n\n\`\`\`\n${log}\n\`\`\`\n\n- 所有程式變更須在 \`ai-governance/change_log.jsonl\` 新增一筆\n- \`touched_files\` 須與實際 git diff 一致\n- 觸及 \`stability: stable\` 模組時單檔變更行數不得超過預算\n- 新增依賴須在 \`modules.yaml\` \`dependency_allowlist\` 核准\n- \`breaking: true\` 時必填 \`rollback_plan\``
+              body: `## AI Governance 未通過（七條 MVP 校驗）\n\n請補齊以下項目後再提交：\n\n\`\`\`\n${log}\n\`\`\`\n\n**七條 MVP 檢查清單：**\n- [MVP 1] 所有程式變更須在 \`ai-governance/change_log.jsonl\` 新增一筆\n- [MVP 2] \`touched_files\` 須與實際 git diff 一致\n- [MVP 3] 觸及 \`stability: stable\` 模組時單檔變更行數不得超過預算\n- [MVP 4] 新增依賴須在 \`modules.yaml\` \`dependency_allowlist\` 核准\n- [MVP 5] \`breaking: true\` 時必填 \`rollback_plan\`\n- [MVP 6] task 的 \`resource_budget.actual_usage\` 不得超出 \`limits\`\n- [MVP 7] 含敏感操作的 task 交付必須帶 \`consent_grant_ref\``
             });

@@ -1,10 +1,11 @@
 # spec:agent-identity v1
-# 範例：單一代理的身份與能力宣告。每個參與對接的 AI 應有一份。
+# GaaP Demo Agent：example-code-agent 的身份宣告（已填充真實欄位）
 
 spec: agent-identity
 version: v1
 agent_id: example-code-agent
-display_name: "Example Code Agent"
+display_name: "Example Code Agent（GaaP Demo）"
+description: "展示 GaaP 執行期治理的代碼代理，對應 TASK-001 執行記錄"
 
 capabilities:
   - code_review
@@ -13,27 +14,50 @@ capabilities:
   - patch_generation
 
 constraints:
-  - "不修改 stability: stable 模組的 public API"
-  - "不新增未在 dependency_allowlist 的依賴"
+  - "不修改 gaap_runtime.py 的 public API 簽名（INV-API-001）"
+  - "不修改 stability: stable 模組（INV-MOD-002）"
+  - "不新增未在 dependency_allowlist 的依賴（INV-DEP-003）"
   - "僅在 coordination 狀態為 approved 時執行寫入"
+  - "change_mode 預設 patch_only"
 
 tools:
   filesystem: allowlist
-  allowlist_paths: ["src/", "tests/", "ai-governance/"]
+  allowlist_paths:
+    - "examples/"
+    - "tests/"
+    - "ai-governance/"
   network: outbound_allowlist
-  network_allowlist: ["api.example.com"]
+  network_allowlist: []
   sandbox: restricted
-  tool_names: ["read_file", "search_replace", "run_tests"]
+  tool_names:
+    - "read_file"
+    - "search_replace"
+    - "run_tests"
 
 io_schema:
   input:
-    description: "Task ticket (see task-ticket schema)"
-    ref: "#/schemas/task-ticket.json"
+    description: "Task ticket（task-ticket schema v1）"
+    ref: "ai-governance/interop/schemas/task-ticket.json"
   output:
-    description: "Patch / report / API response per handoff_protocol"
-    types: ["patch", "report", "api_response"]
+    description: "Patch / report / semantic-drift-report"
+    types:
+      - "patch"
+      - "report"
+      - "api_response"
 
 sla:
   response_deadline_seconds: 300
   max_context_tokens: 128000
-  cost_ceiling_per_task: "configurable"
+  cost_ceiling_per_task: 2.0
+
+# GaaP 治理連結
+reputation_ref: "ai-governance/interop/reputation/example-code-agent-reputation.yaml"
+current_trust_score: 0.82
+current_tier: "full"
+
+# 歷史執行記錄
+execution_history:
+  - task_id: "TASK-001"
+    outcome: "completed_successfully"
+    timestamp: "2026-03-28T02:00:00Z"
+    notes: "gaap_runtime 測試任務完成；見 task-example.yaml"

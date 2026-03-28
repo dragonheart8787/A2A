@@ -1,34 +1,163 @@
 # spec:modules v1
 # 模組邊界與允許變更類型。AI 僅能依此判斷「可動 / 不可動」。
+# 本檔對應真實存在於 repo 的模組（GaaP v2.0.0）。
 
 modules:
-  - name: "[module_name_1]"
+
+  # ── 核心執行期（穩定，不可整檔重寫） ──────────────────────────────────
+
+  - name: gaap_runtime
     owner: core
-    stability: stable   # experimental | beta | stable | deprecated
-    path: "[src/...]"
+    stability: stable
+    path: "examples/gaap_runtime.py"
+    description: "GaaP 七大模組執行期函式庫（Token、Consent、Trust、Drift、Rollback、Resource、Policy）"
     public_api:
-      - "load_prices(symbols, start, end) -> DataFrame"
-      # 僅列 public 介面；簽名變更視為 breaking。
+      - "EphemeralTokenRegistry.issue(agent_id, work_contract_id, scoped_capabilities, ttl_seconds, task_id) -> CapabilityToken"
+      - "EphemeralTokenRegistry.revoke(token_id, reason)"
+      - "EphemeralTokenValidator.validate(token_id, work_contract_id, requested_capability) -> GaaPResult"
+      - "ConsentGate.request_consent(operation_type, sensitive_fields, task_id) -> ConsentRecord"
+      - "ConsentGate.grant(consent_id, granted_by)"
+      - "ConsentGate.check(operation_type, consent_grant_ref) -> GaaPResult"
+      - "TrustScoreEngine.record_event(agent_id, event)"
+      - "TrustScoreEngine.check_capability(agent_id, required_tier) -> GaaPResult"
+      - "SemanticDriftDetector.detect(objective, objective_keywords, deliverable_summary, ...) -> GaaPResult"
+      - "RollbackCoordinator.register_snapshot(agent_id, snapshot_ref)"
+      - "RollbackCoordinator.initiate(work_contract_id, trigger, affected_agents, strategy) -> RollbackPlan"
+      - "RollbackCoordinator.execute(rollback_id) -> GaaPResult"
+      - "ResourceGuard.create_budget(task_id, ...) -> ResourceBudget"
+      - "ResourceGuard.record_usage(budget_id, ...)"
+      - "ResourceGuard.check(budget_id) -> GaaPResult"
+      - "PolicyGate.check(policy_context) -> GaaPResult"
+      - "GaaPGateway.authorize_execute(**kwargs) -> tuple[bool, list[GaaPResult]]"
+      - "GaaPGateway.verify_delivery(**kwargs) -> tuple[bool, GaaPResult]"
     allowed_changes:
       - bugfix
       - perf
     allowed_rewrite: false
+    dependencies: []
 
-  - name: "[module_name_2]"
+  - name: agent_server
     owner: core
     stability: beta
-    path: "[src/...]"
-    public_api: []
+    path: "examples/agent_server.py"
+    description: "A2A-compatible GaaP Agent Server（http.server，/.well-known/agent-card.json，/tasks/send）"
+    public_api:
+      - "GET /.well-known/agent-card.json → ExtendedAgentCard"
+      - "GET /health → HealthStatus"
+      - "GET /demo-credentials → DemoCredentials"
+      - "POST /tasks/send → JSON-RPC 2.0 Response（A2A + GaaP 授權）"
     allowed_changes:
       - bugfix
       - perf
       - refactor
-    allowed_rewrite: true   # 僅當符合 gate-diff 條件時
+    allowed_rewrite: true
+    dependencies: ["gaap_runtime"]
 
-# 依賴與邊界（可與 architecture.md 對照）
-dependency_allowlist: []   # 新增依賴時在此登記，並標註 approved: true/false
+  - name: agent_client
+    owner: core
+    stability: beta
+    path: "examples/agent_client.py"
+    description: "A2A vs GaaP 請求對比客戶端，三種請求模式（A2A-only / GaaP 正常 / 偽造 Token）"
+    public_api: []
+    allowed_changes:
+      - bugfix
+      - feature
+      - refactor
+    allowed_rewrite: true
+    dependencies: []
+
+  - name: demo_full_flow
+    owner: core
+    stability: beta
+    path: "examples/demo_full_flow.py"
+    description: "七個場景的端到端 Demo（無額外依賴，Python stdlib only）"
+    public_api: []
+    allowed_changes:
+      - bugfix
+      - feature
+    allowed_rewrite: true
+    dependencies: ["gaap_runtime"]
+
+  # ── 驗證與 CI 層（穩定，謹慎修改） ────────────────────────────────────
+
+  - name: enforce
+    owner: ci
+    stability: stable
+    path: "ai-governance/scripts/enforce.py"
+    description: "七條 MVP 校驗：change_log / touched_files / stable限制 / allowlist / rollback / resource_budget / consent_gate"
+    public_api:
+      - "main() -> int  # exit 0=pass, 1=fail"
+    allowed_changes:
+      - bugfix
+      - feature
+    allowed_rewrite: false
+
+  - name: validate_schemas
+    owner: ci
+    stability: stable
+    path: "ai-governance/scripts/validate_schemas.py"
+    description: "spec block JSON Schema 驗證（從 .md 抽出 YAML block 機驗）"
+    public_api:
+      - "main() -> int"
+    allowed_changes:
+      - bugfix
+    allowed_rewrite: false
+
+  - name: validate_interop
+    owner: ci
+    stability: stable
+    path: "ai-governance/scripts/validate_interop.py"
+    description: "interop 目錄所有 YAML/JSON 機驗（含七大 GaaP 模組 schema）"
+    public_api:
+      - "main() -> int"
+    allowed_changes:
+      - bugfix
+      - feature
+    allowed_rewrite: false
+
+  # ── Interop 規格層（append_only） ──────────────────────────────────────
+
+  - name: interop_specs
+    owner: spec
+    stability: stable
+    path: "ai-governance/interop/"
+    description: "AI↔AI 互通協定規格（YAML）與 JSON Schema；只能新增，不能刪改既有 required 欄位"
+    public_api: []
+    allowed_changes:
+      - feature
+    allowed_rewrite: false
+
+  - name: governance_docs
+    owner: spec
+    stability: beta
+    path: "ai-governance/"
+    description: "治理文件（contract、architecture、modules、workflow、budgets、decisions）"
+    public_api: []
+    allowed_changes:
+      - bugfix
+      - feature
+      - refactor
+    allowed_rewrite: true
+
+# ── 依賴白名單 ────────────────────────────────────────────────────────────
+
+dependency_allowlist:
+  - name: pyyaml
+    approved: true
+    used_by: [enforce, validate_schemas, validate_interop]
+    version_constraint: ">=6.0"
+  - name: jsonschema
+    approved: true
+    used_by: [enforce, validate_schemas, validate_interop]
+    version_constraint: ">=4.0"
+
+# 核心執行期不允許任何額外依賴（stdlib only）
+# 若需新增依賴，必須先在此登記 approved: true，並附上 rationale
+
 import_rules:
   - rule: no_cross_layer_import
-    description: "禁止從上層模組 import 下層實作細節。"
+    description: "examples/ 下的模組可以 import gaap_runtime；不得反向 import enforce 或 validate_schemas。"
+  - rule: core_stdlib_only
+    description: "gaap_runtime.py、agent_server.py、agent_client.py、demo_full_flow.py 只能使用 Python stdlib。"
   - rule: public_api_only_for_external
-    description: "外部僅能依賴各模組 public_api 所列介面。"
+    description: "外部呼叫者僅能依賴 gaap_runtime 的 public class/function；不得直接使用內部 dataclass 欄位。"

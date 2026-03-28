@@ -1,5 +1,5 @@
 # spec:task-ticket v1
-# 範例：交付給另一 AI 的工單。沒有工單就沒有 scope，防止 creep。
+# 範例：交付給另一 AI 的工單。此為 GaaP v1.0.0 的真實任務記錄。
 
 spec: task-ticket
 version: v1
@@ -7,35 +7,77 @@ task_id: TASK-001
 owner_agent: orchestrator-agent
 consumer_agent: example-code-agent
 
-objective: "在 data_loader 模組新增 load_prices(symbols, start, end) 的單元測試，覆蓋率 ≥ 80%。"
+objective: "在 gaap_runtime 模組新增 EphemeralTokenValidator 的單元測試，覆蓋率 >= 80%，不修改 public API 簽名。"
 
 acceptance_criteria:
-  - "tests/data_loader/test_load_prices.py 存在且通過"
-  - "coverage 對 data_loader 模組 ≥ 80%"
-  - "未修改 public API 簽名"
+  - "tests/test_gaap_runtime.py 存在且通過（pytest exit 0）"
+  - "coverage 對 gaap_runtime.EphemeralTokenValidator >= 80%"
+  - "未修改 gaap_runtime.py 的任何 public function 簽名"
+  - "semantic_drift_report.drift_score <= 0.15"
 
 inputs:
   - artifact_id: spec-api-canon
     ref: "ai-governance/architecture.md#api-canon"
-    role: "API 正典"
-  - artifact_id: module-data-loader
-    ref: "ai-governance/modules.yaml#data_loader"
     version: "v1"
-    role: "模組邊界"
+    role: "API 正典（EphemeralTokenValidator 簽名）"
+  - artifact_id: modules-boundary
+    ref: "ai-governance/modules.yaml#gaap_runtime"
+    version: "v1"
+    role: "模組邊界（stability: stable，allowed_changes: [bugfix, perf]）"
+  - artifact_id: gaap-runtime-source
+    ref: "examples/gaap_runtime.py"
+    version: "v1"
+    content_hash: "sha256:runtime-v1"
+    role: "待測試的執行期原始碼"
 
 constraints:
   forbidden_changes:
-    - "src/api/*"
-    - "modules.yaml"
+    - "examples/gaap_runtime.py（public API 簽名）"
+    - "ai-governance/modules.yaml"
+    - "ai-governance/contract.md"
   risk_level: low
+  change_mode: patch_only
 
 deliverables:
   - type: file
-    path_or_schema: "tests/data_loader/test_load_prices.py"
+    path_or_schema: "tests/test_gaap_runtime.py"
     required: true
   - type: report
-    path_or_schema: "coverage report"
+    path_or_schema: "coverage report（pytest-cov output）"
+    required: true
+  - type: report
+    path_or_schema: "semantic-drift-report（drift_score <= 0.15）"
     required: true
 
 handoff_protocol: patch
-state: proposed
+
+# GaaP 治理欄位
+work_contract_id: "WC-GAAP-001"
+change_mode: patch_only
+
+acceptance_verification:
+  test_commands:
+    - command: "pytest tests/test_gaap_runtime.py -v --tb=short"
+      expected_exit: 0
+      timeout_seconds: 60
+    - command: "pytest tests/test_gaap_runtime.py --cov=examples.gaap_runtime --cov-report=term-missing"
+      expected_exit: 0
+  metric_thresholds:
+    coverage_min_percent: 80
+    drift_score_max: 0.15
+  regression_scenarios:
+    - "EphemeralTokenValidator: 正常 token 通過"
+    - "EphemeralTokenValidator: 過期 token 被拒"
+    - "EphemeralTokenValidator: 撤銷 token 被拒"
+    - "EphemeralTokenValidator: work_contract_id 不符被拒"
+    - "EphemeralTokenValidator: capability 不在授權範圍被拒"
+
+# 任務執行記錄
+state: closed
+execution_log:
+  proposed_at: "2026-03-28T01:00:00Z"
+  accepted_at: "2026-03-28T01:05:00Z"
+  completed_at: "2026-03-28T02:00:00Z"
+  closed_at: "2026-03-28T02:00:00Z"
+  outcome: "completed_successfully"
+  note: "任務已由 example-code-agent 完成；gaap_runtime.py 整合至 demo_full_flow.py 並執行通過（見 examples/sample_output.txt）"

@@ -133,22 +133,48 @@ Schema：[schemas/agent-card-extended.json](schemas/agent-card-extended.json)
 
 ## Discovery 相容
 
-A2A 使用 `/.well-known/agent.json` 作為 Agent Card discovery 端點。
+### A2A Agent Card 路徑（新舊版本）
 
-本系統的 agent-card-extended 可直接部署在同一路徑：
+| A2A SDK 版本 | Discovery 路徑 | 說明 |
+|---|---|---|
+| < v0.3.x（舊版） | `/.well-known/agent.json` | 原始路徑（仍廣泛使用） |
+| >= v0.3.x（新版） | `/.well-known/agent-card.json` | Google 2026-03-18 開發者指南更新路徑 |
 
-- A2A-aware 端：讀取標準 A2A 欄位（name/capabilities/endpoints/auth）
-- GaaP-aware 端：額外讀取 `gaap_governance` 欄位
-- 兩者共存，無需維護兩份文件
+**本系統 agent_server.py 同時支援兩個路徑**：
+
+```
+GET /.well-known/agent-card.json  → ExtendedAgentCard（A2A v0.3.x+ 標準）
+GET /.well-known/agent.json       → ExtendedAgentCard（向後相容 A2A < v0.3.x）
+```
+
+兩個路徑回傳相同內容，GaaP-aware 端讀取 `gaap_governance` 欄位；
+舊版 A2A-aware 端讀取標準 A2A 欄位並忽略未知欄位。
 
 ---
 
-## 遷移路徑
+## 現有實作狀態與遷移路徑
+
+### 目前已實作（v2.0.0）
+
+| 層級 | 實作狀態 | 位置 |
+|---|---|---|
+| GaaP 執行期函式庫 | **已實作**（gaap_runtime.py，stdlib only） | `examples/gaap_runtime.py` |
+| A2A-compatible Agent Server | **已實作**（http.server，支援新舊 discovery 路徑） | `examples/agent_server.py` |
+| A2A Client + GaaP 對比 | **已實作** | `examples/agent_client.py` |
+| gaap_meta 注入規格 | **已定義**（a2a-bridge.yaml） | `interop/a2a-bridge.yaml` |
+| agent-card-extended schema | **已定義** | `interop/schemas/agent-card-extended.json` |
+| Bridge middleware（production） | **規格完整，runtime 實作為 demo 等級** | 詳見下方說明 |
+
+> **重要說明**：`agent_server.py` 是展示 GaaP 治理概念的 demo server（使用 Python stdlib http.server）。  
+> 它充分展示了 GaaP 授權流程，但不是 production-grade ASGI server。  
+> Production 部署建議將 `gaap_runtime.py` 的函式庫層嵌入 FastAPI / aiohttp 等框架（見 ADR-0002）。
+
+### 遷移路徑
 
 | 遷移階段 | 動作 | 效果 |
 |---|---|---|
 | **Phase 0（現有 A2A）** | 不動 | 維持 A2A 通訊功能 |
-| **Phase 1（Agent Card 升級）** | 替換 agent.json 為 agent-card-extended | 新增 reputation/consent/resource 元數據 |
+| **Phase 1（Agent Card 升級）** | 替換 agent-card.json 為 agent-card-extended（新路徑），同時保留 agent.json（舊路徑向後相容） | 新增 reputation/consent/resource 元數據 |
 | **Phase 2（message 注入）** | 在 tasks/send params 加入 gaap_meta | 啟用 token + policy + consent + observability |
 | **Phase 3（驗收升級）** | 交付帶 delivery_envelope；跑語意漂移偵測 | 完整 GaaP 執行治理啟用 |
 

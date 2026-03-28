@@ -165,7 +165,8 @@ class GaaPRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self) -> None:
-        if self.path == "/.well-known/agent.json":
+        if self.path in ("/.well-known/agent-card.json", "/.well-known/agent.json"):
+            # 同時支援 A2A SDK >= v0.3.x 的新路徑與舊路徑（backward compatibility）
             self._send_json(200, AGENT_CARD)
 
         elif self.path == "/health":
@@ -292,7 +293,8 @@ def main() -> None:
     print(f"\n{'═'*55}")
     print(f"  GaaP Demo Agent Server")
     print(f"{'═'*55}")
-    print(f"  Agent Card : http://localhost:{port}/.well-known/agent.json")
+    print(f"  Agent Card : http://localhost:{port}/.well-known/agent-card.json  (A2A SDK >= v0.3.x)")
+    print(f"             : http://localhost:{port}/.well-known/agent.json        (backward compat)")
     print(f"  Tasks API  : http://localhost:{port}/tasks/send")
     print(f"  Health     : http://localhost:{port}/health")
     print(f"  Credentials: http://localhost:{port}/demo-credentials")
