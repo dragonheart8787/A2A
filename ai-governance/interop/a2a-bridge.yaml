@@ -1,0 +1,116 @@
+# spec:a2a-bridge v1
+# A2A 相容橋接層：定義 Google A2A JSON-RPC message ↔ GaaP 治理元數據的注入與映射。
+# 策略：「吞掉 A2A」——保留 A2A transport/discovery，在 message envelope 注入治理層。
+
+spec: a2a-bridge
+version: v1
+
+strategy: |
+  不取代 A2A，而是在每條 A2A JSON-RPC message 的 metadata / params 中注入 GaaP 欄位。
+  A2A-aware 的接收端自動略過未知欄位；GaaP-aware 的接收端則取出並驗證治理元數據。
+  對外宣稱：「A2A-compatible, Governance-as-a-Protocol enabled」。
+
+agent_card_mapping:
+  description: "Google A2A Agent Card ↔ agent-card-extended.json 欄位映射"
+  a2a_field: gaap_field
+  mapping:
+    - a2a: "name"
+      gaap: "name（保留）"
+    - a2a: "description"
+      gaap: "description（保留）"
+    - a2a: "version"
+      gaap: "version（保留）"
+    - a2a: "endpoints.tasks"
+      gaap: "endpoints.tasks（保留）"
+    - a2a: "endpoints.stream"
+      gaap: "endpoints.stream（保留）"
+    - a2a: "auth.type"
+      gaap: "auth.type（擴充：新增 capability_token）"
+    - a2a: "capabilities[].id"
+      gaap: "capabilities[].id（保留）"
+    - a2a: "capabilities[].parameters"
+      gaap: "capabilities[].parameters（保留）"
+    - a2a: "（無）"
+      gaap: "gaap_governance.reputation（新增）"
+    - a2a: "（無）"
+      gaap: "gaap_governance.consent_requirements（新增）"
+    - a2a: "（無）"
+      gaap: "gaap_governance.resource_limits（新增）"
+    - a2a: "（無）"
+      gaap: "gaap_governance.token_policy（新增）"
+  schema: "#/schemas/agent-card-extended.json"
+  discovery: "/.well-known/agent.json 同時提供 A2A-standard + GaaP 欄位（非 GaaP 端忽略擴充欄位）"
+
+message_injection:
+  description: "在 A2A JSON-RPC params 物件中注入 gaap_meta 欄位"
+  injected_fields:
+    - field: "gaap_meta.work_contract_id"
+      source: "WorkContract（negotiation-binds.yaml）"
+      required: true
+    - field: "gaap_meta.capability_token_id"
+      source: "capability-token-lifecycle.yaml"
+      required: true
+    - field: "gaap_meta.policy_context"
+      source: "policy-as-code.yaml"
+      required: true
+    - field: "gaap_meta.trace_id"
+      source: "observability-audit.yaml"
+      required: true
+    - field: "gaap_meta.span_id"
+      source: "observability-audit.yaml"
+      required: true
+    - field: "gaap_meta.consent_grant_ref"
+      source: "consent-orchestration.yaml"
+      required: "若 operation_type 為敏感操作"
+    - field: "gaap_meta.resource_budget_ref"
+      source: "resource-governance.yaml"
+      required: true
+
+  example_a2a_with_gaap: |
+    {
+      "jsonrpc": "2.0",
+      "method": "tasks/send",
+      "params": {
+        "capability_id": "backend_impl",
+        "parameters": { "task_id": "TASK-001" },
+        "gaap_meta": {
+          "work_contract_id": "WC-2025-001",
+          "capability_token_id": "tok-abc123",
+          "policy_context": { "contract_hash": "sha256:..." },
+          "trace_id": "trace-xyz",
+          "span_id": "span-001",
+          "resource_budget_ref": "budget-task001"
+        }
+      },
+      "id": "req-123"
+    }
+
+task_lifecycle_mapping:
+  description: "A2A task states ↔ GaaP coordination-protocol states 對應"
+  mapping:
+    - a2a: "Created"
+      gaap: "propose"
+    - a2a: "Working"
+      gaap: "execute"
+    - a2a: "NeedsInput"
+      gaap: "review（consumer 回 accept_with_needs）"
+    - a2a: "Completed"
+      gaap: "verify（須先通過 semantic-drift 偵測）"
+    - a2a: "Failed"
+      gaap: "close_fail（可觸發 rollback-coordination）"
+    - a2a: "Canceled"
+      gaap: "close（human_requested rollback）"
+
+response_extension:
+  description: "A2A response 附帶 GaaP 驗收與治理結果"
+  fields:
+    - "gaap_result.policy_check_result"
+    - "gaap_result.semantic_drift_report_ref"
+    - "gaap_result.delivery_envelope_ref"
+    - "gaap_result.consent_grant_ref"
+    - "gaap_result.agent_trust_score_after"
+
+compatibility_claim:
+  standard: "A2A-compatible（transport/discovery/message 格式與 Google A2A 相容）"
+  enhancement: "Governance-as-a-Protocol enabled（治理層在上層疊加，非侵入式）"
+  migration: "現有 A2A 端無需修改即可互通；升級 GaaP 端只需在 params 加入 gaap_meta"

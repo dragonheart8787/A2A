@@ -1,0 +1,70 @@
+# spec:agent-reputation v1
+# Agent 信任評分與能力授予系統。
+# 對應 Google A2A 弱點：implicit trust（任意代理均被信任，無歷史績效考量）。
+
+spec: agent-reputation
+version: v1
+
+overview: |
+  Google A2A 假設所有已驗證的 agent 均可信任——只要通過 OAuth/API Key 就可執行任意
+  已宣告的能力。本系統引入動態信任評分（trust_score），基於歷史績效、政策違規、
+  語意漂移、回滾頻率等指標計算，並直接決定 capability_grants 層級。
+
+score_tiers:
+  - tier: full
+    score_range: "[0.8, 1.0]"
+    description: "可使用全部宣告能力，無額外限制"
+  - tier: standard
+    score_range: "[0.6, 0.8)"
+    description: "可使用標準能力，不含高風險操作（credential_access、code_execution）"
+  - tier: restricted
+    score_range: "[0.4, 0.6)"
+    description: "僅限 read-only 與 spec_writing 能力；所有輸出需人工審核"
+  - tier: sandbox_only
+    score_range: "[0.0, 0.4)"
+    description: "強制 sandbox 環境執行；全部 token 撤銷；輸出不可直接進 artifact registry"
+
+scoring_formula:
+  base: 0.7
+  adjustments:
+    task_completed: "+0.02（每次，上限 max_score_gain_per_task=0.05）"
+    task_failed: "-0.05（每次）"
+    policy_violation: "-0.15（每次，立即生效）"
+    drift_incident: "-0.08（每次語意漂移事件）"
+    consent_violation: "-0.20（每次未取得同意即執行敏感操作）"
+    rollback_triggered: "-0.10（每次因此 agent 導致的回滾）"
+  decay:
+    rate_per_day: 0.001
+    minimum_floor: 0.1
+    description: "超過 30 天無任何 task 活動則開始衰減（鼓勵活躍使用且績效良好）"
+
+anti_gaming:
+  max_score_gain_per_task: 0.05
+  cooldown_after_violation_hours: 48
+  description: "違規後 48 小時冷卻期，期間最大加分減半；防止刷簡單任務衝分"
+
+integration:
+  capability_token: "token 發放前檢查 trust_score >= tier 要求；sandbox_only tier 自動撤銷所有 token"
+  policy_gate: "policy_check_result 包含 agent trust_score；低分代理觸發額外審查"
+  observability: "每次 score 變動記入 decision_log（reason, delta, task_id）"
+  enforce: "validate_interop.py 驗證 agent-reputation.yaml schema；CI 確保分數紀錄完整"
+
+schema: "#/schemas/agent-reputation.json"
+
+example:
+  agent_id: example-code-agent
+  trust_score: 0.82
+  score_basis:
+    tasks_completed: 47
+    tasks_failed: 2
+    policy_violations: 0
+    drift_incidents: 1
+    consent_violations: 0
+    rollback_triggered: 1
+  capability_grants:
+    tier: full
+    allowed_capabilities: [code_review, backend_impl, spec_writing, patch_generation]
+
+gaap_vs_a2a:
+  a2a: "驗證即信任——通過 auth 的 agent 享有 Agent Card 宣告的全部能力，無歷史考量"
+  this_protocol: "動態信任評分 + 層級授予 + 衰減機制 + 防刷分 + 與 token/policy/observability 深度整合"

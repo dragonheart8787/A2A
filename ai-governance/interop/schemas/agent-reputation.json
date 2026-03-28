@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/agent-reputation.json",
+  "title": "Agent Reputation & Trust Score (v1)",
+  "description": "信任評分系統：每個 agent 有 trust_score（0.0–1.0），依歷史績效動態調整；capability_grants 依分數決定。對應 Google A2A 弱點：implicit trust、任意代理均被信任。",
+  "type": "object",
+  "required": ["spec", "agent_id", "trust_score", "score_basis"],
+  "properties": {
+    "spec": { "const": "agent-reputation" },
+    "version": { "type": "string", "default": "v1" },
+    "agent_id": {
+      "type": "string",
+      "description": "對應 agent-identity 的 agent_id"
+    },
+    "trust_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "綜合信任分數（0.0=完全不信任，1.0=完全信任）"
+    },
+    "score_basis": {
+      "type": "object",
+      "required": ["tasks_completed", "tasks_failed", "policy_violations"],
+      "description": "分數計算依據",
+      "properties": {
+        "tasks_completed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "成功完成的 task 數量"
+        },
+        "tasks_failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "失敗的 task 數量"
+        },
+        "policy_violations": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "違反 policy 的次數（直接扣分）"
+        },
+        "drift_incidents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "語意漂移事件次數"
+        },
+        "consent_violations": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "未取得同意即執行敏感操作的次數"
+        },
+        "rollback_triggered": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "此 agent 導致回滾的次數"
+        }
+      }
+    },
+    "capability_grants": {
+      "type": "object",
+      "description": "依 trust_score 決定的能力授予層級",
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": ["full", "standard", "restricted", "sandbox_only"],
+          "description": "full>=0.8 / standard>=0.6 / restricted>=0.4 / sandbox_only<0.4"
+        },
+        "allowed_capabilities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "在此 tier 下允許的能力清單"
+        },
+        "forbidden_capabilities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "在此 tier 下明確禁止的能力"
+        }
+      }
+    },
+    "score_history": {
+      "type": "array",
+      "description": "歷史分數記錄（最近 N 筆）",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "score", "reason"],
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "score": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "delta": { "type": "number", "description": "本次變動量（正=加分，負=扣分）" },
+          "reason": { "type": "string" },
+          "task_id": { "type": "string" }
+        }
+      }
+    },
+    "decay_policy": {
+      "type": "object",
+      "description": "信任衰減策略（閒置過久或長期無績效則分數下降）",
+      "properties": {
+        "decay_rate_per_day": {
+          "type": "number",
+          "description": "每天衰減率（如 0.001 = 0.1%/天）"
+        },
+        "minimum_floor": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "衰減下限（不會跌破此值）"
+        }
+      }
+    },
+    "anti_gaming": {
+      "type": "object",
+      "description": "防刷分機制",
+      "properties": {
+        "max_score_gain_per_task": {
+          "type": "number",
+          "description": "單次 task 最大加分上限，防止刷簡單任務衝分"
+        },
+        "cooldown_after_violation_hours": {
+          "type": "integer",
+          "description": "違規後的冷卻期（小時），期間分數上限降低"
+        }
+      }
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}

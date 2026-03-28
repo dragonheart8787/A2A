@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/resource-budget.json",
+  "title": "Resource & Cost Budget (v1)",
+  "description": "資源成本治理：每個 task 帶 token_cost_ceiling、compute_budget_s，超限自動終止。Google A2A 無任何 budget 上限機制，代理可無限消耗。",
+  "type": "object",
+  "required": ["spec", "budget_id", "task_id"],
+  "properties": {
+    "spec": { "const": "resource-budget" },
+    "version": { "type": "string", "default": "v1" },
+    "budget_id": {
+      "type": "string",
+      "description": "唯一預算記錄 ID"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "關聯的 task_id"
+    },
+    "work_contract_id": { "type": "string" },
+    "agent_id": { "type": "string" },
+    "limits": {
+      "type": "object",
+      "description": "資源上限定義",
+      "properties": {
+        "token_cost_ceiling": {
+          "type": "number",
+          "minimum": 0,
+          "description": "LLM token 費用上限（USD 或內部計費單位）"
+        },
+        "input_tokens_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "最大輸入 token 數"
+        },
+        "output_tokens_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "最大輸出 token 數"
+        },
+        "compute_budget_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "最大計算時間（秒）；超過則強制終止"
+        },
+        "tool_calls_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "最大 tool call 次數（防止無限迴圈）"
+        },
+        "context_window_max_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "context window 上限（token 數）"
+        },
+        "file_write_bytes_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "最大可寫入檔案大小（bytes）"
+        },
+        "network_requests_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "最大外部網路請求次數"
+        }
+      }
+    },
+    "actual_usage": {
+      "type": "object",
+      "description": "實際使用量（由 observe 層填入）",
+      "properties": {
+        "token_cost_actual": { "type": "number" },
+        "input_tokens_used": { "type": "integer" },
+        "output_tokens_used": { "type": "integer" },
+        "compute_seconds_used": { "type": "integer" },
+        "tool_calls_used": { "type": "integer" }
+      }
+    },
+    "overflow_action": {
+      "type": "string",
+      "enum": ["terminate", "suspend_and_notify", "notify_only", "escalate_to_human"],
+      "default": "terminate",
+      "description": "超出上限時的處置動作"
+    },
+    "overflow_events": {
+      "type": "array",
+      "description": "已發生的超限事件記錄",
+      "items": {
+        "type": "object",
+        "required": ["resource", "limit", "actual", "timestamp"],
+        "properties": {
+          "resource": { "type": "string" },
+          "limit": { "type": "number" },
+          "actual": { "type": "number" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "action_taken": { "type": "string" }
+        }
+      }
+    },
+    "cost_center": {
+      "type": "string",
+      "description": "計費中心代碼（企業記帳用）"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "預算核准者（若超出全域預算上限，需人工核准）"
+    }
+  },
+  "additionalProperties": true
+}

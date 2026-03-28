@@ -1,0 +1,61 @@
+# spec:semantic-drift v1
+# 語意漂移偵測：協定層比對 deliverable 與 task objective 的語意對齊度。
+# Google A2A 完全沒有此層機制——hallucination 可以悄悄進入產線而不被攔截。
+
+spec: semantic-drift
+version: v1
+
+overview: |
+  多代理系統中，AI 可能產出「看起來有做事」但實際上偏離原始 objective 的 deliverable
+  ——俗稱「有禮貌的幻覺」。Google A2A 的驗收僅靠 task status（Completed/Failed），
+  完全沒有語意層的對齊檢查。本規格在 verify 狀態前強制插入語意漂移偵測。
+
+detection_methods:
+  - method: keyword_coverage
+    description: "從 task objective + acceptance_criteria 提取關鍵詞，計算 deliverable 的覆蓋率"
+    weight: 0.4
+  - method: metric_threshold_check
+    description: "比對 acceptance_verification DSL 中的 metric_thresholds 與 actual_usage"
+    weight: 0.4
+  - method: forbidden_change_detection
+    description: "掃描 deliverable 是否觸及 task.constraints.forbidden_changes"
+    weight: 0.2
+
+drift_score_formula: |
+  drift_score = 1.0 - (
+    keyword_coverage_ratio * 0.4 +
+    metric_thresholds_pass_ratio * 0.4 +
+    (1 if no_forbidden_changes else 0) * 0.2
+  )
+  # 0.0 = 完全對齊；1.0 = 完全偏離
+
+thresholds:
+  pass: "<= 0.15（對齊良好，直接通過）"
+  flag: "(0.15, 0.40]（警告，需人工審核後才能進 artifact registry）"
+  auto_reject: "> 0.40（自動拒絕，consumer 需重做；agent trust_score 扣分）"
+
+integration:
+  coordination_protocol: "在 execute -> verify 轉換時，必須先產出 semantic-drift-report"
+  artifact_registry: "auto_rejected 的 deliverable 不可登入 artifact registry"
+  agent_reputation: "drift_incident 觸發 trust_score -= 0.08"
+  observability: "drift_report 附入 decision_log（citation_refs=task_id+report_id）"
+  rollback: "auto_rejected 可觸發 rollback-coordination（rollback_trigger=drift_auto_rejected）"
+
+schema: "#/schemas/semantic-drift-report.json"
+
+example:
+  task_objective: "在 data_loader 模組新增單元測試，覆蓋率 >= 80%"
+  objective_keywords: ["單元測試", "data_loader", "覆蓋率", "80%"]
+  deliverable_summary: "新增了 test_load_prices.py，coverage=82%，未修改 public API"
+  keyword_coverage:
+    covered: ["單元測試", "data_loader", "覆蓋率", "80%"]
+    missing: []
+    coverage_ratio: 1.0
+  metric_thresholds_pass_ratio: 1.0
+  forbidden_changes_detected: false
+  drift_score: 0.0
+  status: pass
+
+gaap_vs_a2a:
+  a2a: "僅有 Completed/Failed status；無語意層驗證；hallucination 無法在協定層攔截"
+  this_protocol: "協定層語意漂移偵測 + 自動拒絕閾值 + 與 reputation/rollback/observability 整合"

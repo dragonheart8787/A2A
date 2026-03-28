@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/semantic-drift-report.json",
+  "title": "Semantic Drift Report (v1)",
+  "description": "語意漂移偵測：協定層比對 deliverable 與 task objective 的語意覆蓋率，超出閾值則 flag，防止 hallucination 悄悄進入產線。Google A2A 完全沒有此層機制。",
+  "type": "object",
+  "required": ["spec", "report_id", "task_id", "drift_score", "status"],
+  "properties": {
+    "spec": { "const": "semantic-drift-report" },
+    "version": { "type": "string", "default": "v1" },
+    "report_id": {
+      "type": "string",
+      "description": "唯一報告 ID"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "被評估的 task_id"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "產出 deliverable 的 agent"
+    },
+    "work_contract_id": {
+      "type": "string"
+    },
+    "drift_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "語意漂移分數（0.0=完全對齊，1.0=完全偏離）"
+    },
+    "auto_reject_threshold": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.4,
+      "description": "超過此閾值自動拒絕 deliverable，需人工介入"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "flag", "auto_rejected"],
+      "description": "pass=對齊、flag=警告需人工審核、auto_rejected=超閾值自動拒絕"
+    },
+    "objective_keywords": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "從 task objective 提取的關鍵詞/指標"
+    },
+    "deliverable_coverage": {
+      "type": "object",
+      "description": "deliverable 對 objective 關鍵詞的覆蓋情況",
+      "properties": {
+        "covered": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "已覆蓋的關鍵詞"
+        },
+        "missing": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "未覆蓋的關鍵詞（高 drift 警訊）"
+        },
+        "coverage_ratio": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "覆蓋比率"
+        }
+      }
+    },
+    "flagged_deviations": {
+      "type": "array",
+      "description": "具體偏離項目清單",
+      "items": {
+        "type": "object",
+        "required": ["deviation_type", "description"],
+        "properties": {
+          "deviation_type": {
+            "type": "string",
+            "enum": [
+              "scope_expansion",
+              "objective_mismatch",
+              "hallucinated_claim",
+              "missing_acceptance_criteria",
+              "forbidden_change",
+              "unexpected_dependency"
+            ]
+          },
+          "description": { "type": "string" },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "evidence_ref": { "type": "string" }
+        }
+      }
+    },
+    "metric_comparison": {
+      "type": "object",
+      "description": "量化指標比對（與 acceptance_verification DSL 對照）",
+      "properties": {
+        "expected": { "type": "object" },
+        "actual": { "type": "object" },
+        "passed_thresholds": { "type": "array", "items": { "type": "string" } },
+        "failed_thresholds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evaluator": {
+      "type": "string",
+      "description": "執行評估的 agent_id 或 'ci_pipeline'"
+    },
+    "remediation_suggestion": {
+      "type": "string",
+      "description": "建議修正方向（供 consumer agent 參考）"
+    }
+  },
+  "additionalProperties": true
+}

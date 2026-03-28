@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Enforcement hooks：5 條 MVP 校驗。
+Enforcement hooks：7 條 MVP 校驗。
 - 有程式變更必須新增 change_log.jsonl 一筆
 - touched_files 與 git diff 一致
 - 觸及 stability:stable 模組禁止大改（>N 行）
 - 新增依賴必須在 allowlist
 - breaking 必須附 rollback_plan
+- [MVP 6] resource_budget 若存在，actual_usage 不得超出 limits
+- [MVP 7] 含敏感操作的 task，delivery_envelope 必須有 consent_grant_ref
 
 使用方式：
   pre-commit:  python enforce.py
@@ -267,12 +269,117 @@ def main() -> int:
             if not str(rp).strip():
                 errors.append(f"ENFORCE: change_log 新筆 {i+1} 為 breaking change，但未填 rollback_plan。")
 
+    # MVP 6: resource_budget — actual_usage 不得超出 limits
+    errors.extend(_check_resource_budgets())
+
+    # MVP 7: consent gate — 含敏感操作的 task 交付必須附 consent_grant_ref
+    errors.extend(_check_consent_gates())
+
     for e in errors:
         print(e, file=sys.stderr)
     if errors:
         return 1
     print("Enforcement 通過。")
     return 0
+
+
+# ---------------------------------------------------------------------------
+# MVP 6: Resource Budget 校驗
+# ---------------------------------------------------------------------------
+
+SENSITIVE_OPERATIONS = {
+    "read_sensitive_data", "write_sensitive_data", "delete_data",
+    "external_api_call", "credential_access", "payment_operation",
+    "identity_verification", "cross_agent_data_share",
+    "file_system_write", "code_execution",
+}
+
+
+def _load_interop_yaml(filename: str) -> dict:
+    path = GOVERNANCE / "interop" / filename
+    if not path.exists():
+        return {}
+    try:
+        import yaml as _yaml
+        return _yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+
+
+def _check_resource_budgets() -> list[str]:
+    """MVP 6：掃描 interop/tasks/*.yaml，若帶 resource_budget，驗證 actual_usage 不超 limits。"""
+    errors: list[str] = []
+    tasks_dir = GOVERNANCE / "interop" / "tasks"
+    if not tasks_dir.exists():
+        return errors
+    schema_path = GOVERNANCE / "interop" / "schemas" / "resource-budget.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8")) if schema_path.exists() else None
+
+    import yaml as _yaml
+    for p in tasks_dir.glob("*.yaml"):
+        try:
+            data = _yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+        except Exception:
+            continue
+        budget = data.get("resource_budget")
+        if not budget:
+            continue
+        if schema:
+            validator = Draft202012Validator(schema)
+            for err in validator.iter_errors(budget):
+                errors.append(f"ENFORCE [MVP6]: tasks/{p.name} resource_budget schema 錯誤: {err.message}")
+        limits = budget.get("limits") or {}
+        actual = budget.get("actual_usage") or {}
+        checks = [
+            ("token_cost_ceiling", "token_cost_actual"),
+            ("compute_budget_seconds", "compute_seconds_used"),
+            ("tool_calls_max", "tool_calls_used"),
+            ("output_tokens_max", "output_tokens_used"),
+            ("network_requests_max", "network_requests_used"),
+        ]
+        for limit_key, actual_key in checks:
+            limit_val = limits.get(limit_key)
+            actual_val = actual.get(actual_key)
+            if limit_val is not None and actual_val is not None:
+                if actual_val > limit_val:
+                    errors.append(
+                        f"ENFORCE [MVP6]: tasks/{p.name} 超出 resource_budget.limits.{limit_key}："
+                        f" actual={actual_val} > limit={limit_val}。"
+                        f" 請拆分工單或申請 budget 豁免。"
+                    )
+    return errors
+
+
+def _check_consent_gates() -> list[str]:
+    """MVP 7：掃描 interop/tasks/*.yaml，含敏感操作時必須附 consent_grant_ref。"""
+    errors: list[str] = []
+    tasks_dir = GOVERNANCE / "interop" / "tasks"
+    if not tasks_dir.exists():
+        return errors
+    import yaml as _yaml
+    for p in tasks_dir.glob("*.yaml"):
+        try:
+            data = _yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+        except Exception:
+            continue
+        operations = data.get("sensitive_operations") or []
+        if not operations:
+            constraints = data.get("constraints") or {}
+            operations = constraints.get("sensitive_operations") or []
+        if not operations:
+            continue
+        has_sensitive = any(op in SENSITIVE_OPERATIONS for op in operations)
+        if not has_sensitive:
+            continue
+        delivery = data.get("delivery_envelope") or {}
+        consent_ref = delivery.get("consent_grant_ref") or data.get("consent_grant_ref")
+        if not consent_ref:
+            errors.append(
+                f"ENFORCE [MVP7]: tasks/{p.name} 包含敏感操作 {operations}，"
+                f" 但 delivery_envelope 缺少 consent_grant_ref。"
+                f" 請先完成 consent-orchestration 並填入 consent_grant_ref。"
+            )
+    return errors
 
 
 if __name__ == "__main__":

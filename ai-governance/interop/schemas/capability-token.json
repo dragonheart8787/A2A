@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/capability-token.json",
+  "title": "Ephemeral Scoped Capability Token (v1)",
+  "description": "短命限域令牌：綁定 work_contract_id + task_id，自動過期，可撤銷。對應 Google A2A 弱點：overbroad token、無 Token 生命週期控制。",
+  "type": "object",
+  "required": ["spec", "token_id", "agent_id", "scoped_capabilities", "expires_at", "work_contract_id", "issued_at"],
+  "properties": {
+    "spec": { "const": "capability-token" },
+    "version": { "type": "string", "default": "v1" },
+    "token_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "唯一令牌 ID（建議 UUID v4）"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "此令牌發放對象的 agent_id"
+    },
+    "work_contract_id": {
+      "type": "string",
+      "description": "綁定的 WorkContract ID；令牌僅在此 contract 範圍內有效"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "若進一步限定至單一 task，填入 task_id"
+    },
+    "scoped_capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "description": "此令牌允許的能力清單（最小權限；不可超出 agent-identity 宣告範圍）",
+      "items": {
+        "type": "object",
+        "required": ["capability"],
+        "properties": {
+          "capability": {
+            "type": "string",
+            "description": "能力名稱，需對應 agent-identity.capabilities 中的項目"
+          },
+          "allowed_paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "若為 filesystem 操作，限定路徑白名單"
+          },
+          "allowed_operations": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["read", "write", "execute", "delete"] }
+          }
+        }
+      }
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "令牌發放時間（ISO 8601）"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "令牌過期時間（ISO 8601）；過期後接收方必須拒絕"
+    },
+    "revoked": {
+      "type": "boolean",
+      "default": false,
+      "description": "是否已被撤銷；true 則立即失效，無論 expires_at"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "撤銷時間（revoked=true 時必填）"
+    },
+    "revoked_reason": {
+      "type": "string",
+      "description": "撤銷原因"
+    },
+    "issuer_agent_id": {
+      "type": "string",
+      "description": "發放此令牌的 orchestrator/owner agent"
+    },
+    "rotation_policy": {
+      "type": "object",
+      "description": "令牌輪換策略",
+      "properties": {
+        "auto_rotate_before_expiry_seconds": {
+          "type": "integer",
+          "description": "過期前多少秒自動請求換發"
+        },
+        "max_rotations": {
+          "type": "integer",
+          "description": "最大輪換次數；超過則需重新協商"
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": { "revoked": { "const": true } },
+    "required": ["revoked"]
+  },
+  "then": {
+    "required": ["revoked_at"]
+  },
+  "additionalProperties": true
+}

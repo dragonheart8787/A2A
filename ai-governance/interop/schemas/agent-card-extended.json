@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/agent-card-extended.json",
+  "title": "Extended Agent Card (A2A-compatible + GaaP Governance, v1)",
+  "description": "A2A 相容的延伸 Agent Card：保留 Google A2A Agent Card 欄位（name/description/version/endpoints/capabilities），在上層疊加 GaaP 治理元數據（reputation、consent_requirements、resource_limits、token_policy）。",
+  "type": "object",
+  "required": ["spec", "agent_id", "name", "version", "endpoints", "capabilities"],
+  "properties": {
+    "spec": { "const": "agent-card-extended" },
+    "version": { "type": "string" },
+
+    "a2a_compatible": {
+      "type": "boolean",
+      "default": true,
+      "description": "宣告此 agent card 相容 Google A2A 標準"
+    },
+
+    "agent_id": {
+      "type": "string",
+      "description": "本系統內部 agent ID（對應 agent-identity.agent_id）"
+    },
+    "name": {
+      "type": "string",
+      "description": "A2A 標準欄位：代理顯示名稱"
+    },
+    "description": {
+      "type": "string",
+      "description": "A2A 標準欄位：代理功能描述"
+    },
+    "contact": { "type": "string" },
+    "endpoints": {
+      "type": "object",
+      "description": "A2A 標準欄位：tasks/stream 等 endpoint",
+      "properties": {
+        "tasks": { "type": "string", "format": "uri" },
+        "stream": { "type": "string", "format": "uri" },
+        "agent_card": { "type": "string", "format": "uri", "description": "/.well-known/agent.json 路徑" }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "description": "A2A 標準欄位：認證方式",
+      "properties": {
+        "type": { "type": "string", "enum": ["api_key", "oauth2", "jwt", "client_cert", "capability_token"] },
+        "in": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "A2A 標準欄位：能力清單（保持 A2A 格式相容）",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "parameters": { "type": "object" },
+          "returns": { "type": "object" },
+          "requires_consent": {
+            "type": "boolean",
+            "default": false,
+            "description": "GaaP 擴充：此能力是否需要 consent_gate"
+          },
+          "min_trust_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "GaaP 擴充：呼叫此能力所需的最低 trust_score"
+          }
+        }
+      }
+    },
+
+    "gaap_governance": {
+      "type": "object",
+      "description": "GaaP 治理元數據（Google A2A 不具備此層）",
+      "properties": {
+        "reputation": {
+          "type": "object",
+          "description": "信任評分摘要",
+          "properties": {
+            "trust_score": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "tier": { "type": "string", "enum": ["full", "standard", "restricted", "sandbox_only"] },
+            "last_updated": { "type": "string", "format": "date-time" }
+          }
+        },
+        "consent_requirements": {
+          "type": "array",
+          "description": "此 agent 執行哪些操作需要 consent_gate",
+          "items": {
+            "type": "object",
+            "properties": {
+              "operation_type": { "type": "string" },
+              "consent_required_from": { "type": "string", "enum": ["human", "orchestrator", "owner_agent"] }
+            }
+          }
+        },
+        "resource_limits": {
+          "type": "object",
+          "description": "預設資源上限（可由 task 的 resource-budget 覆蓋）",
+          "properties": {
+            "token_cost_ceiling_per_task": { "type": "number" },
+            "compute_budget_seconds_per_task": { "type": "integer" },
+            "tool_calls_max_per_task": { "type": "integer" }
+          }
+        },
+        "token_policy": {
+          "type": "object",
+          "description": "Capability Token 政策",
+          "properties": {
+            "requires_ephemeral_token": { "type": "boolean", "default": true },
+            "token_max_lifetime_seconds": { "type": "integer" },
+            "supports_token_rotation": { "type": "boolean" }
+          }
+        },
+        "no_rewrite_semantics": {
+          "type": "string",
+          "enum": ["patch_only", "refactor_limited", "rewrite_allowed"],
+          "description": "此 agent 預設的 change_mode"
+        }
+      }
+    },
+
+    "well_known_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "此 agent card 的 /.well-known/agent.json 完整 URL（A2A discovery 用）"
+    }
+  },
+  "additionalProperties": true
+}

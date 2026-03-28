@@ -1,0 +1,67 @@
+# spec:capability-token-lifecycle v1
+# 短命限域令牌生命週期管理。
+# 對應 Google A2A 弱點：overbroad token、無 Token 生命週期控制、Privilege escalation。
+# 本規格讓 token 只活在一個 WorkContract + task 的範圍內，自動過期、可撤銷、可輪換。
+
+spec: capability-token-lifecycle
+version: v1
+
+overview: |
+  每個 agent 執行前，orchestrator 為其發放一枚 Ephemeral Scoped Capability Token。
+  Token 綁定 work_contract_id + task_id，僅允許 agent-identity 宣告的能力子集，
+  並在 task 結束後或 expires_at 到期後自動失效。
+  這與 Google A2A 的「直接使用 OAuth2/API Key（永久有效、全域範圍）」完全不同。
+
+lifecycle:
+  states:
+    - issued
+    - active
+    - expired
+    - revoked
+
+  transitions:
+    issued -> active: "接收方驗證 token_id + work_contract_id + 未過期"
+    active -> expired: "現在時間 > expires_at（自動）"
+    active -> revoked: "orchestrator 呼叫 revoke（立即失效）"
+    expired -> revoked: "不適用（expired 即失效）"
+
+issuance:
+  issuer: orchestrator_agent
+  rules:
+    - "Token 必須綁定 work_contract_id；無 WorkContract 則不發放。"
+    - "scoped_capabilities 必須是 agent-identity.capabilities 的子集，禁止超出宣告範圍。"
+    - "expires_at 最長不得超過 task SLA 的 response_deadline_seconds。"
+    - "不可發放無 expires_at 的永久 token（hard block）。"
+  schema: "#/schemas/capability-token.json"
+
+validation:
+  receiver_must_check:
+    - "token_id 存在且未撤銷（查 token registry）"
+    - "expires_at > now（未過期）"
+    - "work_contract_id 與當前 message 一致"
+    - "請求的 capability 在 scoped_capabilities 清單中"
+  on_fail: reject_with_reason
+
+revocation:
+  triggers:
+    - "task 完成或關閉"
+    - "WorkContract 終止"
+    - "policy_check_result.pass == false"
+    - "agent trust_score < 0.4（降至 sandbox_only tier）"
+    - "human 手動撤銷"
+  mechanism: "orchestrator 更新 token registry；revoked=true, revoked_at=now"
+  propagation: "所有接收方在下次驗證時得知撤銷；可選 push 通知"
+
+rotation:
+  rule: "Token 在 expires_at 前 auto_rotate_before_expiry_seconds 時，consumer 可請求換發。"
+  max_rotations_per_contract: 5
+  rotation_requires: "重新驗證 work_contract_id 仍有效"
+
+token_registry:
+  storage: "append_only log（同 change_log.jsonl 格式）"
+  fields: ["token_id", "agent_id", "work_contract_id", "task_id", "issued_at", "expires_at", "revoked"]
+  ci_check: "validate_interop.py 驗證所有 active token 的 schema"
+
+gaap_vs_a2a:
+  a2a: "OAuth 2.0 / API Key — 全域有效，無 task 綁定，無自動過期機制（2025 roadmap 才列入）"
+  this_protocol: "Ephemeral Scoped Token — 綁定 WorkContract+task，有 expires_at，可即時撤銷，防 privilege escalation"

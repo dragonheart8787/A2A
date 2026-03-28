@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/consent-manifest.json",
+  "title": "Consent Manifest (v1)",
+  "description": "明確同意閘門：敏感操作前必須通過 consent_gate，記入 consent audit trail。對應 Google A2A 弱點：無 consent flow、sensitive data 無用戶確認。",
+  "type": "object",
+  "required": ["spec", "consent_id", "operation_type", "sensitive_fields", "consent_required_from", "status"],
+  "properties": {
+    "spec": { "const": "consent-manifest" },
+    "version": { "type": "string", "default": "v1" },
+    "consent_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "唯一同意記錄 ID"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "關聯的 task_id"
+    },
+    "work_contract_id": {
+      "type": "string",
+      "description": "關聯的 WorkContract ID"
+    },
+    "operation_type": {
+      "type": "string",
+      "enum": [
+        "read_sensitive_data",
+        "write_sensitive_data",
+        "delete_data",
+        "external_api_call",
+        "credential_access",
+        "payment_operation",
+        "identity_verification",
+        "cross_agent_data_share",
+        "file_system_write",
+        "code_execution"
+      ],
+      "description": "需要同意的操作類型"
+    },
+    "sensitive_fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "涉及的敏感欄位或資料類別（如 payment_credentials、user_pii）"
+    },
+    "consent_required_from": {
+      "type": "string",
+      "enum": ["human", "orchestrator", "owner_agent"],
+      "description": "需要誰的同意"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "granted", "denied", "expired"],
+      "description": "同意狀態"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "發起同意請求的時間"
+    },
+    "granted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "同意授予時間（status=granted 時必填）"
+    },
+    "denied_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "同意被拒時間（status=denied 時必填）"
+    },
+    "granted_by": {
+      "type": "string",
+      "description": "授予同意的實體（human user ID 或 agent_id）"
+    },
+    "denial_reason": {
+      "type": "string",
+      "description": "拒絕原因（status=denied 時填寫）"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "同意有效期限（超過後需重新取得）"
+    },
+    "audit_trail": {
+      "type": "array",
+      "description": "同意事件稽核軌跡",
+      "items": {
+        "type": "object",
+        "required": ["event", "timestamp"],
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": ["requested", "granted", "denied", "expired", "revoked"]
+          },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "actor": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "scope_description": {
+      "type": "string",
+      "description": "以自然語言說明此操作的目的與影響範圍（供人類閱讀）"
+    }
+  },
+  "if": {
+    "properties": { "status": { "const": "granted" } },
+    "required": ["status"]
+  },
+  "then": {
+    "required": ["granted_at", "granted_by"]
+  },
+  "additionalProperties": true
+}

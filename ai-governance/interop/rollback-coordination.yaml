@@ -1,0 +1,76 @@
+# spec:rollback-coordination v1
+# 多代理回滾協調：失敗時統一觸發，各 agent 依 snapshot_ref 還原。
+# Google A2A 完全無回滾概念——失敗就是失敗，無法撤銷已產生的副作用。
+
+spec: rollback-coordination
+version: v1
+
+overview: |
+  在多代理系統中，Agent A 完成後 Agent B 失敗，Agent A 的產出可能已寫入 artifact
+  registry 或觸發了外部 API。Google A2A 沒有任何協調還原機制。本規格定義多代理
+  回滾的觸發條件、策略、協調流程與回滾後驗證，讓失敗有跡可循、有法可解。
+
+triggers:
+  - condition: task_failed
+    description: "consumer agent 回報 task 失敗（exit code != 0 或無法達成 acceptance_criteria）"
+  - condition: policy_violation
+    description: "enforce.py 或 policy_gate 回報違規"
+  - condition: drift_auto_rejected
+    description: "semantic-drift-report.status = auto_rejected"
+  - condition: consent_denied
+    description: "consent_gate denied，但 agent 仍嘗試執行"
+  - condition: resource_budget_exceeded
+    description: "resource-budget overflow_action = terminate 觸發"
+  - condition: human_requested
+    description: "人類在任何階段下令回滾"
+  - condition: ci_gate_failed
+    description: "CI enforce 失敗，需回滾已推送的變更"
+
+strategies:
+  full_rollback:
+    description: "所有參與代理依 snapshot_ref 還原至 WorkContract 前的狀態"
+    when: "多個代理均有副作用，需完全清除"
+  partial_rollback:
+    description: "僅回滾失敗代理及其下游依賴的代理"
+    when: "上游代理產出仍有效，僅下游失敗"
+  compensating_action:
+    description: "無法真正還原時（如已觸發外部 API），產出補償性動作（通知/修正/審計）"
+    when: "外部系統已被修改且不可逆"
+
+coordination_flow:
+  steps:
+    - step: 1_detect
+      actor: orchestrator_agent
+      action: "偵測到 trigger condition，建立 rollback-plan（status=planned）"
+      schema: "#/schemas/rollback-plan.json"
+    - step: 2_notify
+      actor: orchestrator_agent
+      action: "通知所有 participants 準備回滾；附 snapshot_ref"
+    - step: 3_execute
+      actor: each_participant_agent
+      action: "依 rollback_action（restore_snapshot/delete_artifacts/revert_patch）執行"
+    - step: 4_verify
+      actor: orchestrator_agent
+      action: "執行 verification_after_rollback.test_commands；比對 required_artifact_hashes"
+    - step: 5_close
+      actor: orchestrator_agent
+      action: "rollback-plan.status = completed；記入 change_log.jsonl（change_type=bugfix，breaking=false）"
+    - step: 6_post_mortem
+      actor: human_or_orchestrator
+      action: "建立 ADR 記錄根因與防範措施（post_mortem_ref）"
+
+snapshot_requirements:
+  rule: "每個 agent 在進入 execute 狀態前，必須建立 snapshot_ref（git ref 或 artifact hash）"
+  storage: "artifact registry（immutability=append_only）"
+  format: "{ artifact_id, content_hash, git_ref, created_at }"
+
+integration:
+  semantic_drift: "drift_auto_rejected 可直接觸發 partial_rollback"
+  resource_governance: "resource_budget_exceeded 觸發 terminate + 可選 rollback"
+  observability: "rollback 事件記入 trace_id / decision_log（reason=rollback_coordination）"
+  agent_reputation: "rollback_triggered += 1 -> trust_score -= 0.10"
+  change_log: "回滾後必須新增一筆 change_log.jsonl 記錄（change_type=bugfix，rollback_plan 欄位指向 rollback_id）"
+
+gaap_vs_a2a:
+  a2a: "無回滾機制；task 失敗後副作用殘留（已寫入的 artifact、已呼叫的外部 API）無法協調清除"
+  this_protocol: "多代理協調回滾 + 快照機制 + 回滾後驗證 + 事後分析 + reputation 連動"

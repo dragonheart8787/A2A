@@ -1,0 +1,71 @@
+# spec:consent-orchestration v1
+# 明確同意閘門：敏感操作前必須取得人類或 orchestrator 的可機讀同意。
+# 對應 Google A2A 弱點：無 consent flow、sensitive data 無用戶確認（arxiv 2505.12490 指出）。
+
+spec: consent-orchestration
+version: v1
+
+overview: |
+  Google A2A 目前完全缺少 consent 機制——agent 可在未通知用戶的情況下存取敏感資料
+  （payment credentials、identity docs 等）。本規格在協定層強制插入 consent_gate，
+  讓敏感操作必須附帶機讀同意記錄，且稽核軌跡不可刪改。
+
+sensitive_operation_categories:
+  - id: read_sensitive_data
+    examples: ["payment credentials", "user PII", "identity documents"]
+    consent_required_from: human
+  - id: write_sensitive_data
+    examples: ["database write with PII", "config with secrets"]
+    consent_required_from: human
+  - id: delete_data
+    examples: ["data purge", "artifact deletion"]
+    consent_required_from: orchestrator
+  - id: external_api_call
+    examples: ["payment gateway", "third-party identity provider"]
+    consent_required_from: human
+  - id: credential_access
+    examples: ["reading .env", "accessing secret store"]
+    consent_required_from: human
+  - id: cross_agent_data_share
+    examples: ["passing PII artifact to another agent"]
+    consent_required_from: orchestrator
+  - id: code_execution
+    examples: ["arbitrary shell command", "eval()"]
+    consent_required_from: human
+
+consent_gate_flow:
+  steps:
+    - step: 1_detect
+      actor: consumer_agent
+      action: "在 capability token 驗證後、執行前，檢查 operation_type 是否在敏感操作清單"
+    - step: 2_request
+      actor: consumer_agent
+      action: "產生 consent-manifest（status=pending）送給 consent_required_from 方"
+      schema: "#/schemas/consent-manifest.json"
+    - step: 3_review
+      actor: human_or_orchestrator
+      action: "審核 scope_description + sensitive_fields；決定 grant 或 deny"
+    - step: 4_respond
+      actor: human_or_orchestrator
+      action: "更新 consent-manifest（status=granted/denied，填 granted_at/granted_by）"
+    - step: 5_execute_or_abort
+      actor: consumer_agent
+      action: "status=granted 才執行；status=denied 則 abort + 通知 owner"
+    - step: 6_audit
+      actor: system
+      action: "consent-manifest 附入 delivery_envelope.consent_grant_ref；記入 observability audit trail"
+
+enforcement:
+  protocol_level: "consumer 不可跳過 consent_gate；enforce.py MVP 7 校驗"
+  ci_check: "delivery_envelope 若 task 含敏感操作，必須有 consent_grant_ref"
+  violation_consequence: "policy_check_result.pass=false；agent trust_score 扣分"
+
+audit_trail:
+  immutable: true
+  storage: "consent audit log（JSON Lines，同 change_log.jsonl 格式）"
+  fields: ["consent_id", "task_id", "operation_type", "sensitive_fields", "status", "granted_by", "granted_at"]
+  export: "可匯出至 SIEM（同 observability-audit.yaml）"
+
+gaap_vs_a2a:
+  a2a: "無 consent 機制；敏感操作靠 OAuth scope（粗粒度、非操作級）；arxiv 2505.12490 明確指出此缺陷"
+  this_protocol: "操作級機讀 consent manifest + 不可刪改稽核軌跡 + 協定層強制閘門"

@@ -1,0 +1,71 @@
+# spec:resource-governance v1
+# 資源與成本治理：每個 task 強制帶 resource_budget，超限自動終止。
+# 對應 Google A2A 弱點：無 budget 上限，代理可無限消耗 token/算力。
+
+spec: resource-governance
+version: v1
+
+overview: |
+  Google A2A 沒有任何資源預算機制——agent 可在一次 task 中無限呼叫 LLM、
+  無限讀寫檔案、無限發出外部請求。在企業環境中，這直接等於失控的雲端帳單
+  和無法預測的延遲。本規格在 task ticket 層強制帶入 resource_budget，
+  由 enforce 腳本與 CI 在交付前校驗。
+
+budget_fields:
+  token_cost_ceiling:
+    unit: "USD（或內部計費單位）"
+    description: "LLM token 費用上限；由 actual_usage.token_cost_actual 對比"
+    default_per_tier:
+      full: 2.0
+      standard: 1.0
+      restricted: 0.2
+      sandbox_only: 0.05
+  compute_budget_seconds:
+    description: "計算時間上限；超過則 overflow_action 生效"
+    default_per_tier:
+      full: 3600
+      standard: 1800
+      restricted: 600
+      sandbox_only: 120
+  tool_calls_max:
+    description: "最大 tool call 次數（防止無限 agent loop）"
+    default: 50
+  output_tokens_max:
+    description: "最大輸出 token 數（防止超長輸出導致 context 爆炸）"
+    default: 8192
+  network_requests_max:
+    description: "最大外部網路請求次數"
+    default: 10
+
+overflow_actions:
+  terminate:
+    description: "立即終止 agent；回報 task_failed；可選觸發 rollback-coordination"
+  suspend_and_notify:
+    description: "暫停執行；通知 orchestrator 決定是否繼續或終止"
+  notify_only:
+    description: "僅警告；適合 soft limit（不強制終止，但記入 audit log）"
+  escalate_to_human:
+    description: "終止並升級至人類審核（適合 budget 超出範圍但任務重要的情況）"
+
+enforcement:
+  pre_execute: "task ticket 必須帶 resource_budget 欄位（schema: resource-budget.json）；缺少則 reject"
+  during_execute: "observability 層監控 actual_usage，超限時呼叫 overflow_action"
+  post_execute: "enforce.py MVP 6 驗證 actual_usage <= limits；超限記入 change_log"
+  ci_check: "validate_interop.py 驗證 resource-budget schema"
+
+integration:
+  task_ticket: "task ticket 帶 resource_budget_ref（指向 resource-budget 的 budget_id）"
+  capability_token: "token 發放時攜帶 resource limits 摘要（scoped_capabilities 層）"
+  agent_reputation: "resource_budget_exceeded 觸發 trust_score 警告記錄"
+  observability: "actual_usage 記入每條 message 的 observability 欄位"
+  rollback: "resource_budget_exceeded + overflow_action=terminate 可觸發 partial_rollback"
+
+global_defaults:
+  per_change_budget: "對應 budgets.yaml 的 per_change_limits（Complexity Budget Gate 3）"
+  total_cost_cap_per_release: "可選；在 budgets.yaml 新增 global_budgets.total_llm_cost_cap"
+
+schema: "#/schemas/resource-budget.json"
+
+gaap_vs_a2a:
+  a2a: "無任何資源預算；task 執行無上限；超額帳單與無限 loop 無法在協定層預防"
+  this_protocol: "task 層強制 resource_budget + overflow_action + CI 校驗 + reputation 連動"

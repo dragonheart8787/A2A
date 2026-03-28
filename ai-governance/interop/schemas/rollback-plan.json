@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-governance/interop/rollback-plan.json",
+  "title": "Multi-Agent Rollback Plan (v1)",
+  "description": "多代理回滾協調：失敗時統一觸發 rollback_trigger，各 agent 依 snapshot_ref 還原。Google A2A 完全無回滾概念。",
+  "type": "object",
+  "required": ["spec", "rollback_id", "work_contract_id", "trigger", "strategy", "participants"],
+  "properties": {
+    "spec": { "const": "rollback-plan" },
+    "version": { "type": "string", "default": "v1" },
+    "rollback_id": {
+      "type": "string",
+      "description": "唯一回滾計畫 ID"
+    },
+    "work_contract_id": {
+      "type": "string",
+      "description": "關聯的 WorkContract"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "觸發回滾的 task（若為特定 task 失敗）"
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["condition"],
+      "description": "回滾觸發條件",
+      "properties": {
+        "condition": {
+          "type": "string",
+          "enum": [
+            "task_failed",
+            "policy_violation",
+            "drift_auto_rejected",
+            "consent_denied",
+            "resource_budget_exceeded",
+            "human_requested",
+            "ci_gate_failed"
+          ]
+        },
+        "triggered_by_agent": { "type": "string" },
+        "triggered_at": { "type": "string", "format": "date-time" },
+        "error_ref": { "type": "string", "description": "錯誤 log 或 artifact 引用" }
+      }
+    },
+    "strategy": {
+      "type": "string",
+      "enum": ["full_rollback", "partial_rollback", "compensating_action"],
+      "description": "full_rollback=所有參與代理還原 / partial_rollback=僅回滾失敗代理 / compensating_action=補償性動作"
+    },
+    "participants": {
+      "type": "array",
+      "minItems": 1,
+      "description": "需要參與回滾的代理清單",
+      "items": {
+        "type": "object",
+        "required": ["agent_id", "rollback_action"],
+        "properties": {
+          "agent_id": { "type": "string" },
+          "rollback_action": {
+            "type": "string",
+            "enum": ["restore_snapshot", "delete_artifacts", "revert_patch", "compensate", "notify_only"]
+          },
+          "snapshot_ref": {
+            "type": "string",
+            "description": "還原點引用（artifact_id 或 git ref）"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "failed"]
+          },
+          "completed_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "orchestrator_agent": {
+      "type": "string",
+      "description": "協調此次回滾的 orchestrator"
+    },
+    "verification_after_rollback": {
+      "type": "object",
+      "description": "回滾後的驗證步驟",
+      "properties": {
+        "test_commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "command": { "type": "string" },
+              "expected_exit": { "type": "integer" }
+            }
+          }
+        },
+        "required_artifact_hashes": {
+          "type": "object",
+          "description": "回滾後各 artifact 應有的 hash（驗證還原正確性）"
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["planned", "in_progress", "completed", "partially_completed", "failed"],
+      "default": "planned"
+    },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "post_mortem_ref": {
+      "type": "string",
+      "description": "事後分析文件引用（ADR 或 issue）"
+    }
+  },
+  "additionalProperties": true
+}
