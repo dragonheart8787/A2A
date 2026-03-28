@@ -1,0 +1,156 @@
+$ python examples/demo_full_flow.py
+
+════════════════════════════════════════════════════════════
+  GaaP（Governance-as-a-Protocol）執行期 Demo
+  對應 Google A2A 七大弱點的七個真實場景
+════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────
+  S1: 正常 GaaP 流程 — 所有檢查通過
+────────────────────────────────────────────────────────────
+
+  [ Step 1: 發放 Ephemeral Capability Token（TTL=300s） ]
+  Token ID : tok-a350e5c2cd7e
+  Scoped   : ['backend_impl', 'read_file']
+  Expires  : 300s 後
+
+  [ Step 2: 敏感操作取得 Consent ]
+  Consent ID: consent-e5ca75ff  狀態: granted
+
+  [ Step 3: 建立 Resource Budget（$2.00 / 300s） ]
+
+  [ Step 4: GaaP 授權閘門（Policy + Token + Trust + Consent + Resource） ]
+  [OK] PolicyGate    : Policy 驗證通過（contract_hash 符合）
+  [OK] EphemeralToken: Token 有效（剩餘 300 秒，能力 'backend_impl' 已授權）
+         ttl_left_seconds: 299.9
+         agent_id: code-agent-alpha
+  [OK] TrustScore    : Agent 'code-agent-alpha' 信任分數 0.70（standard tier），通過
+         trust_score: 0.7 / tier: standard
+  [OK] ConsentGate   : 同意已授予（由 'human@example.com'，操作 'read_sensitive_data'）
+         consent_id: consent-e5ca75ff
+  [OK] ResourceGuard : 資源用量正常（token=0.450/2.0，compute=12s/300s，tool_calls=3/50）
+
+  [ Step 5: 語意漂移偵測 ]
+  [OK] SemanticDrift: 語意對齊良好（drift_score=0.000），通過
+
+  → S1 結果：PASS — 進入 execute 狀態
+
+────────────────────────────────────────────────────────────
+  S2: Token 過期 — Ephemeral Token 保護生效
+────────────────────────────────────────────────────────────
+
+  情境：代理持有一枚「剛好一秒前就過期」的 Token
+  Google A2A：OAuth2 Token 預設有效期 1 小時以上，過期不會立即被攔截
+
+  [OK]   PolicyGate    : Policy 驗證通過
+  [FAIL] EphemeralToken: Token 已過期 1 秒
+           expired_at: 2026-03-28T06:29:18+00:00
+  [OK]   TrustScore    : 信任分數 0.70，通過
+  [OK]   ConsentGate   : 操作 'read_file' 不需要同意
+  [OK]   ResourceGuard : 資源用量正常
+
+  → S2 結果：Token 過期，GaaP 攔截成功（A2A 無此保護）
+
+────────────────────────────────────────────────────────────
+  S3: 缺少 Consent — 敏感資料操作被攔截
+────────────────────────────────────────────────────────────
+
+  情境：代理直接嘗試讀取 payment credentials，未取得同意
+  Google A2A：無 consent 機制，arxiv 2505.12490 明確指出此缺陷
+
+  [OK]   PolicyGate    : Policy 驗證通過
+  [OK]   EphemeralToken: Token 有效（300 秒）
+  [OK]   TrustScore    : 信任分數 0.70，通過
+  [FAIL] ConsentGate   : 敏感操作 'credential_access' 缺少 consent_grant_ref
+           required_from: human
+           operation: credential_access
+  [OK]   ResourceGuard : 資源用量正常
+
+  → S3 結果：ConsentGate 攔截（A2A 完全無此層保護）
+
+────────────────────────────────────────────────────────────
+  S4: 信任分數不足 — 低分代理被限制至 sandbox
+────────────────────────────────────────────────────────────
+
+  情境：代理有 3 次 policy violation 與 2 次 consent 違規
+  Google A2A：通過 auth 即信任，無歷史績效考量
+  累積 trust_score: 0.00（tier: sandbox_only）
+
+  [OK]   PolicyGate    : Policy 驗證通過
+  [OK]   EphemeralToken: Token 有效（300 秒）
+  [FAIL] TrustScore    : Agent 信任分數 0.00（sandbox_only），低於要求 standard tier
+           trust_score: 0.0 / tier: sandbox_only
+  [OK]   ConsentGate   : 操作 'read_file' 不需要同意
+  [OK]   ResourceGuard : 資源用量正常
+
+  → S4 結果：TrustScore 攔截（A2A 對此毫無防範）
+
+────────────────────────────────────────────────────────────
+  S5: 語意漂移 — Deliverable 偏離 Objective 被自動拒絕
+────────────────────────────────────────────────────────────
+
+  情境：要求「新增單元測試，coverage >= 80%」，但代理交付了不相關的 API 文件
+  Google A2A：task 狀態僅有 Completed/Failed，無語意層驗證
+
+  [FAIL] SemanticDrift: 語意漂移過高（drift_score=1.000 > 0.4），自動拒絕
+           keyword_coverage: 0/4
+           missing_keywords: ['data_loader', '單元測試', 'coverage', '80%']
+           failed_metrics: ['coverage_min_percent: actual=0 < threshold=80']
+           forbidden_changes: True
+
+  → S5 結果：drift_score=1.0，自動拒絕（A2A 看不到這層）
+
+────────────────────────────────────────────────────────────
+  S6: 資源超支 — LLM 費用超過預算上限
+────────────────────────────────────────────────────────────
+
+  情境：task budget $0.50，但代理已用掉 $3.27（一直在呼叫 LLM）
+  Google A2A：無任何 budget 機制，代理可無限消耗
+
+  [FAIL] ResourceGuard: 資源超限（overflow_action=terminate）
+           violation: token_cost: 3.270 > ceiling 0.5
+           actual: token_cost=$3.27, compute=45s, tool_calls=8
+
+  → S6 結果：ResourceGuard 攔截，overflow_action=terminate（A2A 無此機制）
+
+────────────────────────────────────────────────────────────
+  S7: Google A2A vs GaaP — 相同任務，不同防護等級
+────────────────────────────────────────────────────────────
+
+  [ Google A2A 請求（無治理元數據） ]
+  {
+    "jsonrpc": "2.0",
+    "method": "tasks/send",
+    "params": {
+      "capability_id": "backend_impl",
+      "parameters": { "task_id": "TASK-007", "objective": "讀取 payment credentials" }
+    }
+  }
+  A2A 保護：OAuth2 認證 → 直接執行（無 token 生命週期、無 consent 檢查、無 drift 偵測）
+
+  [ GaaP 請求（七層治理元數據） ]
+  {
+    "jsonrpc": "2.0",
+    "method": "tasks/send",
+    "params": {
+      "capability_id": "backend_impl",
+      "parameters": { "task_id": "TASK-007" },
+      "gaap_meta": {
+        "work_contract_id": "WC-2025-007",
+        "capability_token_id": "tok-abc123",
+        "policy_context": { "contract_hash": "sha256:331ed17e67cc3099" },
+        "trace_id": "trace-xyz-789",
+        "consent_grant_ref": "consent-456",
+        "resource_budget_ref": "budget-task007"
+      }
+    }
+  }
+  GaaP 保護：Policy -> Token -> Trust -> Consent -> Resource -> Drift -> 執行
+
+  關鍵差異：gaap_meta 是非侵入式的——現有 A2A 接收端自動忽略此欄位
+  GaaP-aware 接收端則逐層驗證後才允許 execute
+
+════════════════════════════════════════════════════════════
+  Demo 完成 — 以上所有攔截均由 gaap_runtime.py 執行
+  無需額外依賴，Python 3.9+ 標準函式庫即可執行
+════════════════════════════════════════════════════════════
